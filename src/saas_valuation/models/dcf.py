@@ -208,15 +208,13 @@ def value_company(ticker: str, comps: pd.Series, bridge: pd.Series, market: pd.S
             "base_revenue": comps["revenue"], "base_year": first_year - 1}
 
 
-def run() -> None:
-    from saas_valuation.reports.dcf_excel import write_dcf_workbook
+def value_universe(comps: pd.DataFrame, bridge: pd.DataFrame, market: pd.DataFrame,
+                   cfg: dict) -> tuple[pd.DataFrame, dict, date, float]:
+    """Value every company under one set of assumptions.
 
-    cfg = load_config()
-    processed = project_path(cfg["data"]["processed_dir"])
-    comps = pd.read_csv(processed / "comps.csv", index_col="ticker")
-    bridge = pd.read_csv(processed / "ev_bridge.csv", index_col="ticker")
-    market = pd.read_csv(processed / "market_data.csv", index_col="ticker")
-
+    Returns (summary table, per-company results, valuation date, years rolled forward).
+    The dashboard calls this on every assumption change.
+    """
     first_year = cfg["comps"]["calendar_year"] + 1
     valuation_date = cfg["dcf"].get("valuation_date") or date.today()
     if isinstance(valuation_date, str):
@@ -228,6 +226,20 @@ def run() -> None:
     summary = pd.DataFrame([r["summary"] for r in results.values()]).set_index("ticker")
     summary.insert(0, "name", comps["name"])
     summary.insert(1, "bucket", comps["bucket"])
+    return summary, results, valuation_date, years_elapsed
+
+
+def run() -> None:
+    from saas_valuation.reports.dcf_excel import write_dcf_workbook
+
+    cfg = load_config()
+    processed = project_path(cfg["data"]["processed_dir"])
+    comps = pd.read_csv(processed / "comps.csv", index_col="ticker")
+    bridge = pd.read_csv(processed / "ev_bridge.csv", index_col="ticker")
+    market = pd.read_csv(processed / "market_data.csv", index_col="ticker")
+
+    summary, results, valuation_date, years_elapsed = value_universe(comps, bridge, market, cfg)
+    first_year = cfg["comps"]["calendar_year"] + 1
     summary.to_csv(processed / "dcf_summary.csv")
 
     out = project_path(cfg["comps"]["output_dir"]) / "dcf_models.xlsx"

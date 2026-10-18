@@ -1,0 +1,9 @@
+[server]
+# Only reachable from this computer, not the local network.
+address = "localhost"
+
+[browser]
+gatherUsageStats = false
+
+[theme]
+primaryColor = "#1f3864"

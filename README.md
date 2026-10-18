@@ -2,7 +2,7 @@
 
 A Python tool that values 18 US-listed SaaS companies with trading comps and a DCF model, then ranks which look under- or overvalued.
 
-> Status: **Stage 5 (ranking) complete.** Interactive dashboard is next.
+> Status: **Stage 6 (dashboard) complete.** Optional AI risk summaries are next.
 
 ## Overview
 
@@ -26,6 +26,8 @@ _TODO (Stage 8): the investment question, the approach, and headline findings._
 - **Comps upside.** Raw multiples are misleading because fast growers deserve higher ones, so ln(EV/Revenue) is regressed on revenue growth across the peers. Revenue growth explains 53% of the variation in multiples, against 29% for Rule of 40 and about 1% for FCF margin. Each company's "fair" multiple comes from a line fitted on the *other* companies (leave-one-out), so an outlier can't set its own benchmark.
 
 Both signals are converted to percentile ranks and averaged into a 0–100 score. The output flags where the two signals disagree: those are the companies where the market expects more than the cash flows can show.
+
+**Dashboard (Stage 6).** A Streamlit app that recomputes all 18 valuations and the ranking whenever you change an assumption. You can adjust rates, terminal growth, mature margins, fade years, SBC treatment and ranking weights, or set your own growth, margin and beta for a single company. It uses the same model code as the command-line scripts, so its results always match the Excel outputs.
 
 ## Data sources
 
@@ -51,6 +53,7 @@ python -m saas_valuation.data.pipeline --refresh  # force re-download
 python -m saas_valuation.models.comps             # comps -> outputs/comps_CY2025.xlsx
 python -m saas_valuation.models.dcf               # DCF   -> outputs/dcf_models.xlsx
 python -m saas_valuation.models.ranking           # final ranking -> outputs/ranking.xlsx
+streamlit run dashboard/app.py                     # interactive dashboard at http://localhost:8501
 pytest                                             # run tests
 ```
 
@@ -83,7 +86,7 @@ dashboard/               Streamlit app
 - [x] 3. Comps analysis
 - [x] 4. DCF model
 - [x] 5. Ranking
-- [ ] 6. Streamlit dashboard
+- [x] 6. Streamlit dashboard
 - [ ] 7. AI risk summaries (optional)
 - [ ] 8. Polish
 
