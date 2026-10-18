@@ -208,8 +208,9 @@ def run(refresh: bool = False) -> None:
 
     if not override_df.empty:
         status = override_df["status"].value_counts()
-        print(f"\nOverrides: {status.get('applied', 0)} applied, {status.get('pending', 0)} pending "
-              "(fill value_usd_millions in config.yaml)")
+        pending = status.get("pending", 0)
+        hint = " (fill value_usd_millions in config.yaml)" if pending else ""
+        print(f"\nOverrides: {status.get('applied', 0)} applied, {pending} pending{hint}")
 
     counts = issues_df["severity"].value_counts() if not issues_df.empty else {}
     print(f"\nWrote {len(wide_df)} company-years to {out_dir}")

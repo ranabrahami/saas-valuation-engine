@@ -83,21 +83,31 @@ stock_splits:
 #   * Enter capex and cost of revenue as positive numbers.
 #   * Leave value_usd_millions null until filled. Null entries are ignored and
 #     the affected metric shows "n/a" in the comps.
+#   * Values below were read from each filing's full XBRL (which keeps the
+#     company-specific tags) and cross-checked against statement totals.
 # Only gaps that affect the CY2025 comps are listed. Older gaps (Okta and
 # Zscaler D&A for FY2022-23) only matter for history and can be added later.
 overrides:
-  - {ticker: VEEV, fiscal_year: 2025, concept: capex, value_usd_millions: null,
-     source: "Veeva 10-K, FY ended Jan 31 2025, cash flow statement: purchases of property and equipment"}
-  - {ticker: VEEV, fiscal_year: 2026, concept: capex, value_usd_millions: null,
-     source: "Veeva 10-K, FY ended Jan 31 2026, cash flow statement: purchases of property and equipment"}
-  - {ticker: WDAY, fiscal_year: 2025, concept: cost_of_revenue, value_usd_millions: null,
-     source: "Workday 10-K, FY ended Jan 31 2025, income statement: total costs of revenues"}
-  - {ticker: WDAY, fiscal_year: 2026, concept: cost_of_revenue, value_usd_millions: null,
-     source: "Workday 10-K, FY ended Jan 31 2026, income statement: total costs of revenues"}
-  - {ticker: CRWD, fiscal_year: 2025, concept: depreciation_amortization, value_usd_millions: null,
-     source: "CrowdStrike 10-K, FY ended Jan 31 2025, cash flow statement: depreciation and amortization"}
-  - {ticker: CRWD, fiscal_year: 2026, concept: depreciation_amortization, value_usd_millions: null,
-     source: "CrowdStrike 10-K, FY ended Jan 31 2026, cash flow statement: depreciation and amortization"}
+  # Veeva: the investing section has only 3 cash lines (securities bought,
+  # securities sold, PaymentsForSoftware) and they sum exactly to the reported
+  # total (FY2026: -3,133.1 + 2,057.8 - 29.1 = -1,104.4). So there is no separate
+  # PP&E capex; the software line is already captured as capitalized_software.
+  - {ticker: VEEV, fiscal_year: 2025, concept: capex, value_usd_millions: 0,
+     source: "Veeva 10-K 0001393052-26-000014, cash flow statement: no PP&E purchase line; investing section reconciles to -700.1"}
+  - {ticker: VEEV, fiscal_year: 2026, concept: capex, value_usd_millions: 0,
+     source: "Veeva 10-K 0001393052-26-000014, cash flow statement: no PP&E purchase line; investing section reconciles to -1,104.4"}
+  # Workday: reports cost of subscription and professional services separately,
+  # with no total. Sum of the two = total opex - R&D - S&M - G&A - restructuring.
+  - {ticker: WDAY, fiscal_year: 2025, concept: cost_of_revenue, value_usd_millions: 2069,
+     source: "Workday 10-K 0001327811-26-000014, income statement: subscription 1,266 + professional services 803"}
+  - {ticker: WDAY, fiscal_year: 2026, concept: cost_of_revenue, value_usd_millions: 2321,
+     source: "Workday 10-K 0001327811-26-000014, income statement: subscription 1,531 + professional services 790"}
+  # CrowdStrike: D&A = depreciation (custom tag) + amortization of intangibles.
+  # Excludes amortization of deferred contract acquisition costs (sales commissions).
+  - {ticker: CRWD, fiscal_year: 2025, concept: depreciation_amortization, value_usd_millions: 214.0,
+     source: "CrowdStrike 10-K 0001535527-26-000010, cash flow statement: depreciation 188.0 + intangibles amortization 26.0"}
+  - {ticker: CRWD, fiscal_year: 2026, concept: depreciation_amortization, value_usd_millions: 281.4,
+     source: "CrowdStrike 10-K 0001535527-26-000010, cash flow statement: depreciation 250.2 + intangibles amortization 31.2"}
 
 # -----------------------------------------------------------------------------
 # Comps analysis (Stage 3)
