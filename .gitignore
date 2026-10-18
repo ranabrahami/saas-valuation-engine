@@ -10,8 +10,11 @@ data/processed/*
 !data/raw/.gitkeep
 !data/processed/.gitkeep
 
-# Excel outputs
+# Excel outputs: only the outputs/ snapshot is committed, so readers can open the
+# models without running anything. Re-running the models overwrites it.
 *.xlsx
+!outputs/*.xlsx
+~$*.xlsx
 
 # Python
 __pycache__/

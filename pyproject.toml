@@ -20,7 +20,7 @@ dependencies = [
 [project.optional-dependencies]
 dashboard = ["streamlit"]
 ai = ["anthropic"]
-dev = ["pytest"]
+dev = ["pytest", "playwright"]  # playwright: browser test + README screenshots (uses local Chrome)
 
 [tool.setuptools.packages.find]
 where = ["src"]

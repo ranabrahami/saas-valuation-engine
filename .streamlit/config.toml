@@ -5,5 +5,9 @@ address = "localhost"
 [browser]
 gatherUsageStats = false
 
+[client]
+# Hide the developer menu and Deploy button; this is a viewer-facing app.
+toolbarMode = "viewer"
+
 [theme]
 primaryColor = "#1f3864"

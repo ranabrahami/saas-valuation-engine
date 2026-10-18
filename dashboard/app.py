@@ -24,6 +24,8 @@ st.set_page_config(page_title="SaaS Valuation Engine", layout="wide")
 
 BUCKETS = {"mature_profitable": "Mature, profitable", "growth_profitable": "Growth, profitable",
            "high_growth_unprofitable": "High growth, unprofitable", "maturing": "Maturing"}
+BUCKET_COLORS = {"Mature, profitable": "#1f3864", "Growth, profitable": "#2e75b6",
+                 "High growth, unprofitable": "#c62828", "Maturing": "#d97706"}
 VERDICT_COLORS = {"Undervalued": "#2e7d32", "In line": "#b8860b", "Overvalued": "#c62828"}
 STAGE_COLORS = {"actual": "#7f7f7f", "explicit": "#1f3864", "fade": "#8eaadb"}
 REGRESSORS = {"revenue_growth": "Revenue growth", "rule_of_40": "Rule of 40"}
@@ -196,6 +198,35 @@ with tab_rank:
              + alt.Chart(zero).mark_rule(strokeDash=[4, 4], color="gray").encode(y="v:Q"))
     st.altair_chart(chart.properties(height=460), width="stretch")
 
+    if risk:
+        # Do the models' "cheap" names cluster where the 10-K flags AI disruption?
+        levels = ["none", "low", "medium", "high"]
+        ai = points.assign(ai=points["ticker"].map(lambda t: risk[t]["ai_disruption"]["level"] if t in risk else None))
+        ai = ai.dropna(subset=["ai"]).sort_values("score")
+        ai["level"] = ai["ai"].map(levels.index)
+        # Stagger labels within a row so companies with similar scores stay readable.
+        ai["y"] = ai["level"] + ai.groupby("ai").cumcount().mod(3).map({0: -0.2, 1: 0.0, 2: 0.2})
+        rho = ai["score"].rank().corr(ai["level"].rank())
+        medians = ai.groupby("ai")["score"].median()
+        st.subheader("Cheap for a reason?")
+        st.caption(f"AI disruption risk as disclosed in each 10-K (rated by Claude) against the valuation score. "
+                   f"Rank correlation {rho:+.2f}: " +
+                   " · ".join(f"median score {medians[l]:.0f} at {l} risk" for l in levels if l in medians) +
+                   ". The models price today's cash flows; a high-risk name that screens cheap may be a value trap.")
+        y_axis = alt.Axis(values=sorted(ai["level"].unique().tolist()), labelExpr=
+                          " : ".join(f"datum.value == {i} ? '{l}'" for i, l in enumerate(levels)) + " : ''")
+        dots = alt.Chart(ai).encode(
+            x=alt.X("score:Q", title="Valuation score (100 = cheapest)", scale=alt.Scale(domain=[0, 108])),
+            y=alt.Y("y:Q", title="AI disruption risk", axis=y_axis,
+                    scale=alt.Scale(domain=[ai["level"].min() - 0.5, ai["level"].max() + 0.5])),
+            color=alt.Color("verdict:N", scale=alt.Scale(domain=list(VERDICT_COLORS),
+                                                         range=list(VERDICT_COLORS.values())), title="Verdict",
+                            legend=alt.Legend(orient="bottom")),
+            tooltip=["ticker", "name", alt.Tooltip("score:Q", format=".0f"), alt.Tooltip("ai:N", title="AI risk")])
+        st.altair_chart((dots.mark_circle(size=140, opacity=0.85)
+                         + dots.mark_text(dx=9, align="left", fontSize=12).encode(text="ticker:N"))
+                        .properties(height=340), width="stretch")
+
 
 # ---------------------------------------------------------------------------
 # Company deep dive
@@ -329,12 +360,14 @@ with tab_company:
                    f"([source]({rr['url']})). Quotes are checked against the filing text.")
         st.write(rr["summary"])
         level_box = {"high": st.error, "medium": st.warning, "low": st.success, "none": st.info}[ai["level"]]
-        mechanisms = ", ".join(m.replace("_", " ") for m in ai["mechanisms"] if m != "none") or "none disclosed"
+        mechanisms = ", ".join(m.replace("_", " ").replace("ai ", "AI ") for m in ai["mechanisms"]
+                               if m != "none") or "none disclosed"
         level_box(f"**AI disruption risk: {ai['level'].upper()}** ({mechanisms}). {ai['assessment']}")
         if ai["quote"]:
             st.markdown(f"> {ai['quote']}" + ("" if ai["quote_verified"] else "  \n*Quote not found verbatim in the filing.*"))
         st.dataframe(pd.DataFrame([{
-            "Risk": k["title"], "Category": k["category"].replace("_", " "), "Severity": k["severity"],
+            "Risk": k["title"], "Category": k["category"].replace("_", " ").replace("ai ", "AI "),
+            "Severity": k["severity"],
             "Company-specific": k["company_specific"], "Why it matters": k["explanation"],
             "Quote verified": k["quote_verified"]} for k in rr["top_risks"]]),
             hide_index=True, width="stretch")
@@ -352,13 +385,14 @@ with tab_comps:
                f"{regression['multiple_change_per_10pts']:+.0%} higher multiple. Companies below the line are "
                "cheap for their fundamentals.")
     pts = ranking.reset_index().rename(columns={"index": "ticker"}).dropna(subset=["regressor", "ev_revenue"])
+    pts["profile"] = pts["bucket"].map(BUCKETS)
     xs = np.linspace(pts["regressor"].min(), pts["regressor"].max(), 60)
     fit = pd.DataFrame({"regressor": xs, "fitted": np.exp(regression["intercept"] + regression["slope"] * xs)})
     scatter = alt.Chart(pts).encode(
         x=alt.X("regressor:Q", title=label, axis=alt.Axis(format="%")),
         y=alt.Y("ev_revenue:Q", title="EV / Revenue (log scale)", scale=alt.Scale(type="log")),
-        color=alt.Color("bucket:N", title="Profile", legend=alt.Legend(labelExpr=
-            " || ".join(f"datum.value == '{k}' ? '{v}'" for k, v in BUCKETS.items()) + " : datum.value")),
+        color=alt.Color("profile:N", title="Profile", scale=alt.Scale(domain=list(BUCKET_COLORS),
+                                                                      range=list(BUCKET_COLORS.values()))),
         tooltip=["ticker", "name", alt.Tooltip("regressor:Q", format=".0%", title=label),
                  alt.Tooltip("ev_revenue:Q", format=".1f", title="EV/Revenue"),
                  alt.Tooltip("fair_ev_revenue:Q", format=".1f", title="Fair EV/Revenue")])
@@ -373,12 +407,12 @@ with tab_comps:
         "Gross margin": pct(comps["gross_margin"]), "FCF margin": pct(comps["fcf_margin"]),
         "SBC % revenue": pct(comps["sbc_pct_revenue"]), "Rule of 40": pct(comps["rule_of_40"]),
     }).sort_values("EV / Revenue", ascending=False)
-    mult = st.column_config.NumberColumn(format="%.1fx")
-    pcol = st.column_config.NumberColumn(format="%.0f%%")
-    st.dataframe(ctable, width="stretch", height=670, column_config={
-        "EV / Revenue": mult, "EV / EBITDA": mult, "P / FCF": mult, "Revenue growth": pcol,
-        "Gross margin": pcol, "FCF margin": pcol, "SBC % revenue": pcol, "Rule of 40": pcol})
-    st.caption("Blank multiples are NM (negative earnings or above 100x). Full detail in outputs/comps_CY2025.xlsx.")
+    # A Styler (not column_config) so missing multiples read "NM"; sorting still uses the numbers.
+    formats = {c: "{:.1f}x" for c in ["EV / Revenue", "EV / EBITDA", "P / FCF"]}
+    formats |= {c: "{:.0f}%" for c in ["Revenue growth", "Gross margin", "FCF margin", "SBC % revenue", "Rule of 40"]}
+    st.dataframe(ctable.style.format(formats, na_rep="NM"), width="stretch", height=670)
+    st.caption("NM = not meaningful (negative earnings, or a multiple above 100x). "
+               "Full detail in outputs/comps_CY2025.xlsx.")
 
 
 # ---------------------------------------------------------------------------
