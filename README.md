@@ -110,7 +110,7 @@ The `outputs/` folder holds a snapshot of every workbook, so you can open the mo
 Requires Python 3.12+.
 
 ```bash
-git clone https://github.com/<your-username>/saas-valuation-engine.git
+git clone https://github.com/ranabrahami/saas-valuation-engine.git
 cd saas-valuation-engine
 python3.12 -m venv .venv && source .venv/bin/activate
 pip install -e ".[dashboard]"            # add ,ai for the risk layer, ,dev for tests
