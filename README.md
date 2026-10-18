@@ -2,7 +2,7 @@
 
 A Python tool that values 18 US-listed SaaS companies with trading comps and a DCF model, then ranks which look under- or overvalued.
 
-> Status: **Stage 3 (comps analysis) complete.** DCF model is next.
+> Status: **Stage 4 (DCF model) complete.** Ranking is next.
 
 ## Overview
 
@@ -14,7 +14,14 @@ _TODO (Stage 8): the investment question, the approach, and headline findings._
 
 **Data integrity.** Stock splits are detected automatically and every pre-split share count is restated to today's basis, so a split is never mistaken for dilution. Numbers missing from the SEC's standardized dataset are entered by hand in `config.yaml` with a cited source, never estimated.
 
-_TODO: DCF approach and ranking logic._
+**DCF (Stage 4).** A two-stage free cash flow model: 5 explicit years, then 5 fade years in which revenue growth glides down to a 3% terminal rate and FCF margins converge to a mature level. A plain 5-year model that forces growth to 3% by year 5 gives every company the same ~3-4x terminal revenue multiple and erases the premium for high growth; the fade stage fixes that. Other choices:
+- The discount rate is WACC, with the cost of equity from CAPM using Blume-adjusted betas.
+- Mid-year discounting and a Gordon growth terminal value.
+- Stock-based comp is treated as a real expense, since it's employee pay delivered in shares.
+- Each company sheet includes a WACC × terminal growth sensitivity grid.
+- A **reverse DCF** solves for the starting growth that today's price implies, which separates "the model is biased" from "the market expects more".
+
+_TODO: ranking logic._
 
 ## Data sources
 
@@ -38,6 +45,7 @@ cp .env.example .env   # then add your name and email
 python -m saas_valuation.data.pipeline            # fetch + clean data (uses cache when fresh)
 python -m saas_valuation.data.pipeline --refresh  # force re-download
 python -m saas_valuation.models.comps             # comps -> outputs/comps_CY2025.xlsx
+python -m saas_valuation.models.dcf               # DCF   -> outputs/dcf_models.xlsx
 pytest                                             # run tests
 ```
 
@@ -68,7 +76,7 @@ dashboard/               Streamlit app
 - [x] 1. Setup
 - [x] 2. Data pipeline
 - [x] 3. Comps analysis
-- [ ] 4. DCF model
+- [x] 4. DCF model
 - [ ] 5. Ranking
 - [ ] 6. Streamlit dashboard
 - [ ] 7. AI risk summaries (optional)

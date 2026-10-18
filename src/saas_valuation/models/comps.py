@@ -269,6 +269,7 @@ def run() -> None:
 
     tables = compute_comps(financials, market, comps_cfg, splits, overrides)
     tables["comps"].to_csv(processed / "comps.csv")
+    tables["ev_bridge"].to_csv(processed / "ev_bridge.csv")
 
     out_dir = project_path(comps_cfg["output_dir"])
     out_dir.mkdir(parents=True, exist_ok=True)
