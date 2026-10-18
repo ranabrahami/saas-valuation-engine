@@ -2,7 +2,7 @@
 
 A Python tool that values 18 US-listed SaaS companies with trading comps and a DCF model, then ranks which look under- or overvalued.
 
-> Status: **Stage 2 (data pipeline) complete.** Comps analysis is next.
+> Status: **Stage 3 (comps analysis) complete.** DCF model is next.
 
 ## Overview
 
@@ -10,7 +10,11 @@ _TODO (Stage 8): the investment question, the approach, and headline findings._
 
 ## Methodology
 
-_TODO: comps metrics, DCF approach, ranking logic. Filled in as each stage is built._
+**Comps (Stage 3).** EV/Revenue, EV/EBITDA and P/FCF alongside growth, margins, Rule of 40, SBC and net dilution. Flow metrics are calendarized to a common calendar year, since fiscal years end anywhere from January to December. Results that are mathematically valid but meaningless, such as a multiple of negative EBITDA, are shown as NM. Missing inputs are shown as n/a with the reason recorded. The full definitions are in the workbook's Methodology sheet.
+
+**Data integrity.** Stock splits are detected automatically and every pre-split share count is restated to today's basis, so a split is never mistaken for dilution. Numbers missing from the SEC's standardized dataset are entered by hand in `config.yaml` with a cited source, never estimated.
+
+_TODO: DCF approach and ranking logic._
 
 ## Data sources
 
@@ -33,6 +37,7 @@ cp .env.example .env   # then add your name and email
 ```bash
 python -m saas_valuation.data.pipeline            # fetch + clean data (uses cache when fresh)
 python -m saas_valuation.data.pipeline --refresh  # force re-download
+python -m saas_valuation.models.comps             # comps -> outputs/comps_CY2025.xlsx
 pytest                                             # run tests
 ```
 
@@ -43,7 +48,9 @@ The pipeline writes to `data/processed/`:
 | `financials.csv` | One row per company per fiscal year, one column per metric |
 | `financials_long.csv` | Same data in long format, with the XBRL tag each number came from |
 | `market_data.csv` | Price, market cap, share counts, beta |
-| `data_quality_report.csv` | Every gap or inconsistency found, ranked error / warning / info |
+| `data_quality_report.csv` | Every gap or inconsistency found, ranked error / warning / info / resolved |
+| `stock_splits.csv` | Every split on record and how many share counts it restated |
+| `overrides_log.csv` | Hand-entered values: applied or still pending |
 
 ## Project structure
 
@@ -60,7 +67,7 @@ dashboard/               Streamlit app
 
 - [x] 1. Setup
 - [x] 2. Data pipeline
-- [ ] 3. Comps analysis
+- [x] 3. Comps analysis
 - [ ] 4. DCF model
 - [ ] 5. Ranking
 - [ ] 6. Streamlit dashboard

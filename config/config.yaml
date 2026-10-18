@@ -63,6 +63,77 @@ data:
   share_count_tolerance: 0.15
 
 # -----------------------------------------------------------------------------
+# Stock splits
+# -----------------------------------------------------------------------------
+# Splits are pulled automatically from yfinance; add any it misses here.
+# Share counts filed BEFORE a split are multiplied by its ratio, so every year
+# is on today's share basis. financials.csv keeps both the as-reported and the
+# split-adjusted count, and the Excel output lists every split explicitly.
+stock_splits:
+  manual: []
+  # - {ticker: XYZ, date: 2026-06-15, ratio: 4, source: "8-K filed 2026-05-20"}
+
+# -----------------------------------------------------------------------------
+# Manual overrides for numbers the SEC dataset can't provide
+# -----------------------------------------------------------------------------
+# Lines a company files under its own custom XBRL tags never reach the SEC's
+# standardized dataset, so they have to be read from the 10-K by hand.
+#   * Enter values in USD MILLIONS. Each statement says "in thousands" or
+#     "in millions" at the top; convert accordingly.
+#   * Enter capex and cost of revenue as positive numbers.
+#   * Leave value_usd_millions null until filled. Null entries are ignored and
+#     the affected metric shows "n/a" in the comps.
+# Only gaps that affect the CY2025 comps are listed. Older gaps (Okta and
+# Zscaler D&A for FY2022-23) only matter for history and can be added later.
+overrides:
+  - {ticker: VEEV, fiscal_year: 2025, concept: capex, value_usd_millions: null,
+     source: "Veeva 10-K, FY ended Jan 31 2025, cash flow statement: purchases of property and equipment"}
+  - {ticker: VEEV, fiscal_year: 2026, concept: capex, value_usd_millions: null,
+     source: "Veeva 10-K, FY ended Jan 31 2026, cash flow statement: purchases of property and equipment"}
+  - {ticker: WDAY, fiscal_year: 2025, concept: cost_of_revenue, value_usd_millions: null,
+     source: "Workday 10-K, FY ended Jan 31 2025, income statement: total costs of revenues"}
+  - {ticker: WDAY, fiscal_year: 2026, concept: cost_of_revenue, value_usd_millions: null,
+     source: "Workday 10-K, FY ended Jan 31 2026, income statement: total costs of revenues"}
+  - {ticker: CRWD, fiscal_year: 2025, concept: depreciation_amortization, value_usd_millions: null,
+     source: "CrowdStrike 10-K, FY ended Jan 31 2025, cash flow statement: depreciation and amortization"}
+  - {ticker: CRWD, fiscal_year: 2026, concept: depreciation_amortization, value_usd_millions: null,
+     source: "CrowdStrike 10-K, FY ended Jan 31 2026, cash flow statement: depreciation and amortization"}
+
+# -----------------------------------------------------------------------------
+# Comps analysis (Stage 3)
+# -----------------------------------------------------------------------------
+comps:
+  # Fiscal years end in different months (Salesforce: January, Atlassian:
+  # June, Zscaler: July). To compare like with like, flow metrics are
+  # "calendarized": blended from the two fiscal years that overlap this
+  # calendar year, weighted by months of overlap.
+  calendar_year: 2025
+
+  # GAAP EBITDA = operating income + D&A. Much of Wall Street also adds back
+  # stock-based comp ("Adjusted EBITDA"), which flatters SaaS companies where
+  # SBC is 15-35% of revenue. Set true to follow that convention.
+  ebitda_add_back_sbc: false
+
+  # Capitalized software development is cash spent much like capex.
+  # Subtracting it keeps FCF comparable between companies that capitalize
+  # development costs and those that expense them.
+  fcf_subtract_capitalized_software: true
+
+  # Treat short-term investments (Treasuries, commercial paper) like cash
+  # when bridging from market cap to enterprise value.
+  ev_net_short_term_investments: true
+
+  # Margin used in the Rule of 40 (revenue growth % + margin %).
+  # Options: fcf_margin (most common for SaaS), fcf_margin_after_sbc, ebitda_margin
+  rule_of_40_margin: fcf_margin
+
+  # Multiples above this are shown as "NM" (not meaningful): a 400x EV/EBITDA
+  # says more about near-zero EBITDA than about valuation.
+  max_meaningful_multiple: 100
+
+  output_dir: outputs
+
+# -----------------------------------------------------------------------------
 # DCF assumptions (Stage 4)
 # -----------------------------------------------------------------------------
 dcf:

@@ -28,19 +28,23 @@ def _load_snapshot(ticker: str, cache_dir: Path, max_age_hours: float, refresh: 
     if not refresh and cache_file.exists():
         snapshot = json.loads(cache_file.read_text())
         age = datetime.now() - datetime.fromisoformat(snapshot["fetched_at"])
-        if age < timedelta(hours=max_age_hours):
+        if age < timedelta(hours=max_age_hours) and "splits" in snapshot:
             return snapshot
 
-    info = yf.Ticker(ticker).info
+    yf_ticker = yf.Ticker(ticker)
+    info = yf_ticker.info
     snapshot = {"fetched_at": datetime.now().isoformat(timespec="seconds"),
                 **{f: info.get(f) for f in FIELDS},
-                "regularMarketPrice": info.get("regularMarketPrice")}
+                "regularMarketPrice": info.get("regularMarketPrice"),
+                "splits": [{"date": ts.date().isoformat(), "ratio": float(ratio)}
+                           for ts, ratio in yf_ticker.splits.items()]}
     cache_file.write_text(json.dumps(snapshot, indent=2))
     return snapshot
 
 
 def fetch_market_data(ticker: str, cache_dir: Path, max_age_hours: float,
-                      refresh: bool = False) -> tuple[dict, list[dict]]:
+                      refresh: bool = False) -> tuple[dict, list[dict], list[dict]]:
+    """Returns (market row, issues, stock splits as [{date, ratio, source}])."""
     cache_dir.mkdir(parents=True, exist_ok=True)
     snapshot = _load_snapshot(ticker, cache_dir, max_age_hours, refresh)
 
@@ -66,4 +70,5 @@ def fetch_market_data(ticker: str, cache_dir: Path, max_age_hours: float,
     if row["currency"] not in (None, "USD"):
         issues.append({"ticker": ticker, "severity": "error", "concept": "currency", "fiscal_year": None,
                        "issue": "non_usd_quote", "detail": f"Quoted in {row['currency']}."})
-    return row, issues
+    splits = [{**s, "source": "yfinance"} for s in snapshot["splits"]]
+    return row, issues, splits
