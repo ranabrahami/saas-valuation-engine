@@ -9,6 +9,7 @@ saved back to config.yaml; "Reset" returns to its values.
 """
 
 import copy
+import json
 
 import altair as alt
 import numpy as np
@@ -43,6 +44,16 @@ def load_inputs() -> tuple[dict, dict[str, pd.DataFrame]]:
     return cfg, tables
 
 
+@st.cache_data(ttl=60)
+def load_risk(processed_dir: str) -> dict[str, dict]:
+    """Stage 7 output, if it has been run: {ticker: result}."""
+    risk_dir = project_path(processed_dir) / "risk"
+    if not risk_dir.exists():
+        return {}
+    results = {f.stem: json.loads(f.read_text()) for f in risk_dir.glob("*.json")}
+    return {t: r for t, r in results.items() if r.get("status") == "ok"}
+
+
 @st.cache_data(show_spinner="Revaluing 18 companies...")
 def compute(cfg: dict, comps: pd.DataFrame, bridge: pd.DataFrame, market: pd.DataFrame):
     summary, results, valuation_date, _ = value_universe(comps, bridge, market, cfg)
@@ -58,6 +69,7 @@ except FileNotFoundError as exc:
     st.stop()
 
 comps, bridge, market = data["comps"], data["ev_bridge"], data["market_data"]
+risk = load_risk(base_cfg["data"]["processed_dir"])
 
 
 # ---------------------------------------------------------------------------
@@ -156,6 +168,8 @@ with tab_rank:
         "Blended upside": pct(ranking["blended_upside"]),
         "Signals agree": ranking["signals_agree"],
     })
+    if risk:
+        table["AI risk (10-K)"] = [risk[t]["ai_disruption"]["level"] if t in risk else None for t in table.index]
     money = st.column_config.NumberColumn(format="$%.2f")
     upside = st.column_config.NumberColumn(format="%+.0f%%")
     st.dataframe(table, width="stretch", height=670, column_config={
@@ -304,6 +318,26 @@ with tab_company:
 
     if isinstance(s["notes"], str) and s["notes"]:
         st.info(s["notes"])
+
+    st.subheader("Risk factors from the latest 10-K")
+    if ticker not in risk:
+        st.caption("Not summarized yet. Run `python -m saas_valuation.models.risk` (needs an Anthropic API key).")
+    else:
+        rr = risk[ticker]
+        ai = rr["ai_disruption"]
+        st.caption(f"Summarized by {rr['model_served']} from Item 1A of the 10-K filed {rr['filing_date']} "
+                   f"([source]({rr['url']})). Quotes are checked against the filing text.")
+        st.write(rr["summary"])
+        level_box = {"high": st.error, "medium": st.warning, "low": st.success, "none": st.info}[ai["level"]]
+        mechanisms = ", ".join(m.replace("_", " ") for m in ai["mechanisms"] if m != "none") or "none disclosed"
+        level_box(f"**AI disruption risk: {ai['level'].upper()}** ({mechanisms}). {ai['assessment']}")
+        if ai["quote"]:
+            st.markdown(f"> {ai['quote']}" + ("" if ai["quote_verified"] else "  \n*Quote not found verbatim in the filing.*"))
+        st.dataframe(pd.DataFrame([{
+            "Risk": k["title"], "Category": k["category"].replace("_", " "), "Severity": k["severity"],
+            "Company-specific": k["company_specific"], "Why it matters": k["explanation"],
+            "Quote verified": k["quote_verified"]} for k in rr["top_risks"]]),
+            hide_index=True, width="stretch")
 
 
 # ---------------------------------------------------------------------------

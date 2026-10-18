@@ -208,6 +208,27 @@ dcf:
     terminal_growth_range: [0.02, 0.025, 0.03, 0.035, 0.04]
 
 # -----------------------------------------------------------------------------
+# AI risk summaries (Stage 7, optional; needs ANTHROPIC_API_KEY in .env)
+# -----------------------------------------------------------------------------
+# Claude reads Item 1A (Risk Factors) of each company's latest 10-K and returns
+# structured JSON: top risks, and a specific read on AI disruption risk.
+ai_risk:
+  model: claude-opus-5-5
+  # How much the model reasons before answering (low / medium / high / xhigh /
+  # max). Reading ~30 pages and ranking risks is moderate work; medium is
+  # the model's own default.
+  effort: medium
+  max_tokens: 16000
+  top_risks: 5
+  # USD per million tokens, used only for the cost estimate and report.
+  # Check current pricing before relying on these.
+  price_input_per_mtok: 4.0
+  price_output_per_mtok: 20.0
+  # Rough output allowance per company for the up-front estimate (answer +
+  # reasoning tokens); the run reports actual usage.
+  estimated_output_tokens: 6000
+
+# -----------------------------------------------------------------------------
 # Ranking weights (Stage 5)
 # -----------------------------------------------------------------------------
 ranking:

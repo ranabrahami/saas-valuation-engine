@@ -28,22 +28,42 @@ class SecClient:
         self.cache_max_age = timedelta(days=cache_max_age_days)
         self._last_request = 0.0
 
-    def _get_json(self, url: str, cache_file: Path, refresh: bool) -> dict:
-        if not refresh and cache_file.exists():
-            age = datetime.now() - datetime.fromtimestamp(cache_file.stat().st_mtime)
-            if age < self.cache_max_age:
-                return json.loads(cache_file.read_text())
+    def _fresh(self, cache_file: Path, refresh: bool) -> bool:
+        if refresh or not cache_file.exists():
+            return False
+        age = datetime.now() - datetime.fromtimestamp(cache_file.stat().st_mtime)
+        return age < self.cache_max_age
 
+    def _get(self, url: str) -> requests.Response:
         wait = self.min_interval - (time.monotonic() - self._last_request)
         if wait > 0:
             time.sleep(wait)
-        response = self.session.get(url, timeout=30)
+        response = self.session.get(url, timeout=60)
         self._last_request = time.monotonic()
         response.raise_for_status()
+        return response
 
-        data = response.json()
+    def _get_json(self, url: str, cache_file: Path, refresh: bool) -> dict:
+        if self._fresh(cache_file, refresh):
+            return json.loads(cache_file.read_text())
+        data = self._get(url).json()
         cache_file.write_text(json.dumps(data))
         return data
+
+    def submissions(self, cik: int, refresh: bool = False) -> dict:
+        """Filing history: form types, accession numbers, primary documents."""
+        url = f"https://data.sec.gov/submissions/CIK{cik:010d}.json"
+        return self._get_json(url, self.cache_dir / f"submissions_CIK{cik:010d}.json", refresh)
+
+    def filing_document(self, cik: int, accession: str, document: str, cache_file: Path) -> str:
+        """A filing's document (e.g. the 10-K's main HTML). Filed documents never change, so cache forever."""
+        if cache_file.exists():
+            return cache_file.read_text()
+        url = f"https://www.sec.gov/Archives/edgar/data/{cik}/{accession.replace('-', '')}/{document}"
+        text = self._get(url).text
+        cache_file.parent.mkdir(parents=True, exist_ok=True)
+        cache_file.write_text(text)
+        return text
 
     def ticker_to_cik(self, refresh: bool = False) -> dict[str, int]:
         raw = self._get_json(TICKER_MAP_URL, self.cache_dir / "company_tickers.json", refresh)

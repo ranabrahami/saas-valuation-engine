@@ -2,7 +2,7 @@
 
 A Python tool that values 18 US-listed SaaS companies with trading comps and a DCF model, then ranks which look under- or overvalued.
 
-> Status: **Stage 6 (dashboard) complete.** Optional AI risk summaries are next.
+> Status: **Stage 7 (AI risk layer) built.** Polish for GitHub is next.
 
 ## Overview
 
@@ -29,6 +29,13 @@ Both signals are converted to percentile ranks and averaged into a 0–100 score
 
 **Dashboard (Stage 6).** A Streamlit app that recomputes all 18 valuations and the ranking whenever you change an assumption. You can adjust rates, terminal growth, mature margins, fade years, SBC treatment and ranking weights, or set your own growth, margin and beta for a single company. It uses the same model code as the command-line scripts, so its results always match the Excel outputs.
 
+**AI risk layer (Stage 7, optional).** The valuation models only see the numbers. Claude Opus 5.5 reads Item 1A (Risk Factors) of each company's latest 10-K and returns schema-validated JSON:
+- a plain-English summary;
+- the top 5 risks, ranked by materiality rather than the order they're listed in, and marked company-specific or boilerplate;
+- a specific assessment of AI disruption risk: seat compression, AI-native competitors, pricing pressure, and so on.
+
+Every quote is checked against the filing text, so a paraphrase can't pass as a quote. The point is to test whether the companies the models call undervalued are the ones disclosing AI risks the market may be pricing in. Item 1A is located by line-anchored headings, which skips both the table of contents and in-text cross-references.
+
 ## Data sources
 
 - **SEC EDGAR XBRL API** (`companyfacts`): historical financials from 10-K filings
@@ -54,6 +61,10 @@ python -m saas_valuation.models.comps             # comps -> outputs/comps_CY202
 python -m saas_valuation.models.dcf               # DCF   -> outputs/dcf_models.xlsx
 python -m saas_valuation.models.ranking           # final ranking -> outputs/ranking.xlsx
 streamlit run dashboard/app.py                     # interactive dashboard at http://localhost:8501
+
+# Optional: AI risk summaries (needs ANTHROPIC_API_KEY in .env; ~$5 for all 18)
+python -m saas_valuation.models.risk --estimate   # exact token count and cost, nothing billed
+python -m saas_valuation.models.risk              # summarize -> outputs/risk_summaries.xlsx
 pytest                                             # run tests
 ```
 
@@ -87,7 +98,7 @@ dashboard/               Streamlit app
 - [x] 4. DCF model
 - [x] 5. Ranking
 - [x] 6. Streamlit dashboard
-- [ ] 7. AI risk summaries (optional)
+- [x] 7. AI risk summaries (optional)
 - [ ] 8. Polish
 
 ## Disclaimer
