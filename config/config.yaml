@@ -1,0 +1,78 @@
+# =============================================================================
+# SaaS Valuation Engine — central configuration
+# -----------------------------------------------------------------------------
+# Every assumption the model uses lives here. Nothing is hard-coded in src/.
+# Sections marked (Stage N) are not used by any code yet; values are starting
+# points to be reviewed when that stage is built.
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# Universe: 18 US-listed SaaS companies, all US-GAAP 10-K filers.
+# Grouped by profile so the comps/DCF stages compare unlike businesses.
+# -----------------------------------------------------------------------------
+universe:
+  mature_profitable:
+    - ADBE   # Adobe
+    - CRM    # Salesforce
+    - VEEV   # Veeva Systems
+    - PAYC   # Paycom
+    - PCTY   # Paylocity
+  growth_profitable:
+    - NOW    # ServiceNow
+    - WDAY   # Workday
+    - TEAM   # Atlassian
+  high_growth_unprofitable:
+    - DDOG   # Datadog
+    - SNOW   # Snowflake
+    - MDB    # MongoDB
+    - CRWD   # CrowdStrike
+    - ZS     # Zscaler
+    - OKTA   # Okta
+  maturing:
+    - HUBS   # HubSpot
+    - TWLO   # Twilio
+    - DOCU   # DocuSign
+    - ZM     # Zoom
+
+# -----------------------------------------------------------------------------
+# Data pipeline (Stage 2)
+# -----------------------------------------------------------------------------
+data:
+  # SEC requires a descriptive User-Agent with a contact email on every
+  # request. Set SEC_EDGAR_USER_AGENT in your .env file (never commit it).
+  user_agent_env_var: SEC_EDGAR_USER_AGENT
+  years_of_history: 5
+  raw_dir: data/raw
+  processed_dir: data/processed
+  # SEC fair-access policy caps traffic at 10 requests/second.
+  max_requests_per_second: 8
+
+# -----------------------------------------------------------------------------
+# DCF assumptions (Stage 4)
+# -----------------------------------------------------------------------------
+dcf:
+  projection_years: 5
+
+  # WACC via CAPM: cost of equity = risk_free_rate + beta * equity_risk_premium
+  risk_free_rate: 0.043          # ~10-year US Treasury yield; update before running
+  equity_risk_premium: 0.055     # long-run US ERP (Damodaran-style estimate)
+  default_beta: 1.2              # fallback only if a company's beta is unavailable
+  pre_tax_cost_of_debt: 0.06
+  tax_rate: 0.21                 # US federal statutory rate
+
+  # Terminal value (Gordon growth). Must stay below WACC, and should not
+  # exceed long-run nominal GDP growth (~2-3%), or the company would
+  # eventually be "bigger than the economy".
+  terminal_growth_rate: 0.03
+
+  # Sensitivity table ranges (WACC x terminal growth)
+  sensitivity:
+    wacc_range: [-0.02, -0.01, 0.0, 0.01, 0.02]       # added to base WACC
+    terminal_growth_range: [0.02, 0.025, 0.03, 0.035, 0.04]
+
+# -----------------------------------------------------------------------------
+# Ranking weights (Stage 5)
+# -----------------------------------------------------------------------------
+ranking:
+  dcf_upside_weight: 0.5
+  comps_weight: 0.5

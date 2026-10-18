@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "saas-valuation-engine"
+version = "0.1.0"
+description = "Comps + DCF valuation and ranking of US-listed SaaS companies using SEC EDGAR and yfinance data."
+requires-python = ">=3.12"
+dependencies = [
+    "requests",
+    "pandas",
+    "numpy",
+    "yfinance",
+    "pyyaml",
+    "python-dotenv",
+    "openpyxl",
+]
+
+[project.optional-dependencies]
+dashboard = ["streamlit"]
+dev = ["pytest"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
