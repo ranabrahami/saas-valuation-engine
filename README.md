@@ -2,7 +2,7 @@
 
 A Python tool that values 18 US-listed SaaS companies with trading comps and a DCF model, then ranks which look under- or overvalued.
 
-> Status: **Stage 1 (setup) complete.** Data pipeline is next.
+> Status: **Stage 2 (data pipeline) complete.** Comps analysis is next.
 
 ## Overview
 
@@ -28,6 +28,23 @@ pip install -e ".[dev,dashboard]"
 cp .env.example .env   # then add your name and email
 ```
 
+## Usage
+
+```bash
+python -m saas_valuation.data.pipeline            # fetch + clean data (uses cache when fresh)
+python -m saas_valuation.data.pipeline --refresh  # force re-download
+pytest                                             # run tests
+```
+
+The pipeline writes to `data/processed/`:
+
+| File | Contents |
+|---|---|
+| `financials.csv` | One row per company per fiscal year, one column per metric |
+| `financials_long.csv` | Same data in long format, with the XBRL tag each number came from |
+| `market_data.csv` | Price, market cap, share counts, beta |
+| `data_quality_report.csv` | Every gap or inconsistency found, ranked error / warning / info |
+
 ## Project structure
 
 ```
@@ -42,7 +59,7 @@ dashboard/               Streamlit app
 ## Roadmap
 
 - [x] 1. Setup
-- [ ] 2. Data pipeline
+- [x] 2. Data pipeline
 - [ ] 3. Comps analysis
 - [ ] 4. DCF model
 - [ ] 5. Ranking

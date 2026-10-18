@@ -46,6 +46,21 @@ data:
   processed_dir: data/processed
   # SEC fair-access policy caps traffic at 10 requests/second.
   max_requests_per_second: 8
+  # Re-download filings data only if the cached copy is older than this.
+  # Annual 10-K data changes rarely, so a week is plenty.
+  sec_cache_max_age_days: 7
+  # Prices move every day, so market data is refreshed more often.
+  market_data_max_age_hours: 24
+  # A fact counts as a "full fiscal year" if its period spans this many days.
+  # 350-380 accepts 52/53-week fiscal years but rejects quarters (~90 days)
+  # and odd transition periods when a company changes its year-end.
+  annual_period_days:
+    min: 350
+    max: 380
+  # Flag when two share-count sources disagree by more than this. Applies to
+  # yfinance vs market-cap-implied, SEC cover page vs implied, and current vs
+  # last 10-K (buybacks/issuance explain small gaps; splits show up as ~2x, 4x).
+  share_count_tolerance: 0.15
 
 # -----------------------------------------------------------------------------
 # DCF assumptions (Stage 4)
