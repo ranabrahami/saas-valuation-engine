@@ -211,5 +211,26 @@ dcf:
 # Ranking weights (Stage 5)
 # -----------------------------------------------------------------------------
 ranking:
+  # Each signal is turned into a percentile rank (0-100) within the universe
+  # before weighting, so one extreme result (e.g. a -85% DCF) can't swamp the other.
   dcf_upside_weight: 0.5
   comps_weight: 0.5
+
+  # Comps signal: a high-growth company *should* trade at a higher multiple,
+  # so the raw multiple isn't a fair comparison. Instead, ln(EV/Revenue) is
+  # regressed on this metric across the universe; a company trading below its
+  # predicted ("fair") multiple is cheap for its fundamentals.
+  # Options: revenue_growth, rule_of_40. Revenue growth is the default because
+  # it fits best: on CY2025 data it explains 53% of the variation in multiples
+  # (R²), vs 29% for Rule of 40 and ~1% for FCF margin. The market is paying
+  # for growth, not margin, so Rule of 40 makes high-margin names look cheap.
+  # The ranking workbook shows this comparison each run.
+  comps_regressor: revenue_growth
+  # Each company's fair multiple comes from a line fitted on the OTHER companies
+  # (leave-one-out), so an outlier can't pull the line toward its own price.
+  leave_one_out: true
+
+  # Verdict labels from the final score. Relative to peers, not absolute:
+  # "undervalued" means cheaper than the rest of this universe.
+  undervalued_above: 67
+  overvalued_below: 33

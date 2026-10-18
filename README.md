@@ -2,7 +2,7 @@
 
 A Python tool that values 18 US-listed SaaS companies with trading comps and a DCF model, then ranks which look under- or overvalued.
 
-> Status: **Stage 4 (DCF model) complete.** Ranking is next.
+> Status: **Stage 5 (ranking) complete.** Interactive dashboard is next.
 
 ## Overview
 
@@ -21,7 +21,11 @@ _TODO (Stage 8): the investment question, the approach, and headline findings._
 - Each company sheet includes a WACC × terminal growth sensitivity grid.
 - A **reverse DCF** solves for the starting growth that today's price implies, which separates "the model is biased" from "the market expects more".
 
-_TODO: ranking logic._
+**Ranking (Stage 5).** Two independent signals:
+- **DCF upside.**
+- **Comps upside.** Raw multiples are misleading because fast growers deserve higher ones, so ln(EV/Revenue) is regressed on revenue growth across the peers. Revenue growth explains 53% of the variation in multiples, against 29% for Rule of 40 and about 1% for FCF margin. Each company's "fair" multiple comes from a line fitted on the *other* companies (leave-one-out), so an outlier can't set its own benchmark.
+
+Both signals are converted to percentile ranks and averaged into a 0–100 score. The output flags where the two signals disagree: those are the companies where the market expects more than the cash flows can show.
 
 ## Data sources
 
@@ -46,6 +50,7 @@ python -m saas_valuation.data.pipeline            # fetch + clean data (uses cac
 python -m saas_valuation.data.pipeline --refresh  # force re-download
 python -m saas_valuation.models.comps             # comps -> outputs/comps_CY2025.xlsx
 python -m saas_valuation.models.dcf               # DCF   -> outputs/dcf_models.xlsx
+python -m saas_valuation.models.ranking           # final ranking -> outputs/ranking.xlsx
 pytest                                             # run tests
 ```
 
@@ -77,7 +82,7 @@ dashboard/               Streamlit app
 - [x] 2. Data pipeline
 - [x] 3. Comps analysis
 - [x] 4. DCF model
-- [ ] 5. Ranking
+- [x] 5. Ranking
 - [ ] 6. Streamlit dashboard
 - [ ] 7. AI risk summaries (optional)
 - [ ] 8. Polish
