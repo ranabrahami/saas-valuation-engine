@@ -1,158 +1,150 @@
 # SaaS Valuation Engine
 
-A Python tool that values 18 US-listed SaaS companies from their SEC filings. It values each one two ways, with a two-stage DCF and a regression-adjusted trading comps model, and ranks them from most undervalued to most overvalued. An optional AI layer then reads each 10-K's Risk Factors to test whether the stocks that look cheap are cheap for a reason.
+**Institutional-style equity research generated from SEC filings, plus a point-in-time backtest of whether its valuation signal works.**
 
-Everything comes from primary sources: XBRL financials from SEC EDGAR, prices from Yahoo Finance and risk factors from the 10-K text. Every assumption is in one config file and can be changed live in a Streamlit dashboard.
+The engine values 18 US-listed software companies from their 10-K filings:
+- **Valuation:** a two-stage DCF and growth-adjusted trading comps.
+- **Ratings:** each company gets an Overweight / Neutral / Underweight rating, a 12-month price target and bull/bear cases.
+- **Reports:** a five-page PDF initiation report per company, its narrative written by Claude under an automatic check that every number traces to the data.
+- **Backtest:** rebuilds the engine's inputs as they stood on past dates, to test whether "cheap" names went on to outperform.
 
-![Ranking dashboard](docs/images/ranking.png)
+| Sample reports | Rating | Why it's interesting |
+|---|---|---|
+| [Adobe](docs/samples/ADBE_initiation_2026-11-01.pdf) | Overweight | The clean case: the price implies shrinking revenue; the company grows ~10% with a 41% FCF margin |
+| [HubSpot](docs/samples/HUBS_initiation_2026-11-01.pdf) | Overweight, **flagged outlier** | The report explains why the model's +158% target shouldn't be taken at face value |
+| [Zoom](docs/samples/ZM_initiation_2026-11-01.pdf) | Neutral | Priced roughly where the models put it |
+| [Snowflake](docs/samples/SNOW_initiation_2026-11-01.pdf) | Underweight | The risks listed are *upside* risks, as a real Underweight requires |
+| [Backtest note](docs/samples/backtest_note.pdf) | — | Does the signal predict returns? Method, results, robustness, limitations |
 
-*Prices as of 18 Oct 2026; financials calendarized to CY2025. Educational project, not investment advice.*
+<p>
+<img src="docs/images/report_page1.png" width="49%" alt="Report page 1: rating, price target, thesis and price chart">
+<img src="docs/images/report_page3.png" width="49%" alt="Report page 3: charts, valuation discussion and football field">
+</p>
+
+*Prices as of 1 November 2026. Educational project, not investment advice.*
 
 ---
 
 ## Key findings
 
-**1. The two methods agree on the extremes.** HubSpot, Adobe, Workday, Paylocity and DocuSign screen cheap on both the DCF and comps. CrowdStrike, Datadog, Snowflake, Okta and Veeva screen expensive on both.
+### 1. Cheap-for-its-growth predicted returns, but the evidence is three years deep
+Each quarter since March 2023, the 18 companies were ranked by the engine's score using **only filings and prices public on that day**, then compared with their returns over the next 12 months.
 
-![DCF vs comps](docs/images/quadrant.png)
-
-**2. The reverse DCF shows what each price assumes.** Solving for the starting revenue growth that makes the DCF equal today's price gives:
-
-| | Growth implied by price | Actual CY2025 growth | Read |
+| Signal | Mean 12-month rank IC | t (Newey-West) | Cheapest third minus most expensive third |
 |---|---|---|---|
-| CrowdStrike | 86% | 22% | Price needs growth to nearly quadruple |
-| Snowflake | 67% | 29% | Price needs growth to more than double |
-| Adobe | −2% | 10% | Price assumes revenue shrinks |
-| Paylocity | 3% | 12% | Price assumes growth stalls |
+| **Engine score (DCF + comps)** | **+0.21** | 3.6 | **+15 pts a year** |
+| Comps upside | +0.24 | 3.8 | +17 pts |
+| DCF upside | +0.19 | 2.8 | +18 pts |
+| Baseline: low EV/revenue | +0.10 | 1.3 | +5 pts |
+| Baseline: 12-1 month momentum | −0.09 | −1.2 | −8 pts |
 
-**3. The cheap stocks are the ones most exposed to AI.** Claude rated the AI disruption risk each company discloses in its own 10-K.
-- 5 of the 6 "undervalued" companies rate **high**. None of the 5 "overvalued" ones do.
-- The rank correlation between AI risk and the valuation score is **+0.62**.
-- The undervalued group (Adobe, HubSpot, Workday, Atlassian, DocuSign) sells per-seat tools for knowledge workers. Their filings name generic LLMs, AI agents and "vibe-coded" software as substitutes.
-- The expensive group is security and data infrastructure, where AI tends to add demand rather than replace it.
+- **The value is in the growth adjustment.** Plain cheapness is 80% rank-correlated with the engine's score but earns half the IC. The signal works as "cheap *for its growth*", not "cheap".
+- **It survives attempts to break it.** Dropping any one company leaves the IC between 0.15 and 0.25. A permutation test gives p ≈ 0.005, which overstates certainty because overlapping windows aren't independent. The comps design rejected in 2026 (Rule of 40) does just as well (IC 0.24), so the result isn't an artifact of choosing the design after seeing the data.
+- **But treat it as encouraging, not proven.** There are only three non-overlapping years (ICs −0.15, +0.51, +0.27), one regime (2023–26) and today's survivors (the companies were chosen in 2026).
 
-![AI risk vs valuation](docs/images/ai_risk.png)
+<p>
+<img src="docs/images/backtest_page1.png" width="49%" alt="Backtest note page 1">
+<img src="docs/images/backtest_page2.png" width="49%" alt="Backtest note page 2: IC by date, results and robustness">
+</p>
 
-**What that means:** a DCF built on today's growth and margins can't see a threat that hasn't reached the numbers yet. The market appears to be pricing one in. Whether it's right is the investment question; the models alone can't call a "cheap" name like HubSpot or Adobe a buy without an answer to it.
+### 2. The reverse DCF shows what each price assumes
+Solving for the starting revenue growth that makes the DCF equal today's price:
+
+| | Growth the price implies | Actual calendar-2025 growth | Read |
+|---|---|---|---|
+| CrowdStrike | 89% | 22% | Needs growth to roughly quadruple → Underweight, flagged outlier |
+| Snowflake | 66% | 29% | Needs growth to more than double → Underweight |
+| HubSpot | 6% | 19% | Prices in a sharp slowdown → Overweight |
+| Adobe | −2% | 10% | Prices in shrinking revenue → Overweight |
+
+### 3. The cheap stocks are the ones most exposed to AI
+Claude rated the AI disruption risk each company discloses in its own 10-K (Item 1A).
+- Four of the six "undervalued" names rate **high**. None of the five "overvalued" ones do.
+- The rank correlation between AI risk and the valuation score is +0.59.
+- The cheap group sells per-seat tools for knowledge workers. The expensive group is security and data infrastructure, where AI adds demand.
+
+A DCF built on today's numbers can't see a threat that hasn't reached them yet, and the reports say so in their risk sections. The backtest covers 2023–26, when this rotation was under way, which is one more reason not to over-read it.
 
 ---
 
 ## How it works
 
 ```
-SEC EDGAR (XBRL)  ─┐
-                   ├─► Data pipeline ─► Comps ─┐
-Yahoo Finance     ─┘   (clean, tag,     (Stage 3) ├─► Ranking ─► Excel workbooks
-                       split-adjust)  ─► DCF ─────┘   (Stage 5)   Streamlit dashboard
-SEC 10-K text  ──────► Item 1A ─► Claude risk summary (Stage 7) ──┘
+SEC EDGAR XBRL ──► data pipeline ──► comps ──┐
+Yahoo Finance  ──►  (tags, splits,   DCF  ──┼──► ranking ──► price target, scenarios, rating
+                     restatements)          │                          │
+10-K text ──────► Item 1 + Item 1A ──► Claude risk summary            │
+                                                                       ▼
+                         charts + Claude narrative (number-checked) ──► PDF report
+point-in-time rebuild of all of the above ──────────────────────────► backtest note
 ```
 
-### 1. Data pipeline
-- Five years of annual financials from the SEC's XBRL `companyfacts` API, including revenue, gross profit, operating income, D&A, SBC, operating cash flow, capex, capitalized software, cash, investments, debt and diluted shares.
-- **Tag handling.** Companies report the same item under different XBRL tags, and sometimes switch tags between years. Each concept has a priority list of tags, and every number records which tag it came from.
-- **Stock splits** are detected and every earlier share count is restated to today's basis, so a split is never mistaken for dilution. CrowdStrike (4:1) and ServiceNow (5:1) split inside the data window.
-- **Dual-class companies** (Atlassian, Workday) are valued on market cap ÷ price, because the share count from data providers covers only one class.
-- **Gaps are flagged, not guessed.** Every issue goes into a ranked data-quality report. The six values the SEC's standardized dataset doesn't carry were taken from the filings' own custom XBRL tags and entered in `config.yaml`, each with the filing it came from.
+| Step | What it does | Code |
+|---|---|---|
+| **Data** | 5 years of 10-K financials from SEC companyfacts. A priority list of XBRL tags per concept, provenance for every number, stock splits restated, dual-class share counts handled. Gaps are flagged, never guessed. | `data/` |
+| **Comps** | EV/revenue, EV/EBITDA, P/FCF, margins, Rule of 40. Every flow metric is calendarized to CY2025 because fiscal years end in different months. | `models/comps.py` |
+| **DCF** | Two stages (5 explicit + 5 fade years). WACC from CAPM with Blume-adjusted betas, stock-based pay as a real cost, Gordon terminal value, sensitivity grid, and a reverse DCF. | `models/dcf.py` |
+| **Ranking** | ln(EV/revenue) regressed on growth across peers, leave-one-out (R² 0.49). DCF and comps upside combined as percentile ranks. | `models/ranking.py` |
+| **Target and rating** | Fair value = 50/50 DCF and comps, rolled forward 12 months at the cost of equity. Bull/bear cases shift growth and margin ±5 pts, and the comps multiple ±1 residual s.d. Ratings are relative to the coverage median (±15 pts). Targets beyond ±75% are **flagged, not capped**. | `models/target.py` |
+| **AI risk** | Claude reads each 10-K's Item 1A and returns schema-validated JSON. Every quote is verified word-for-word against the filing. | `models/risk.py` |
+| **Narrative** | Claude (Opus 5.5) writes the thesis, business overview, valuation discussion, risks and "what would change our view". It is given the rating as a fact it must not change, plus a 65-item tagged fact sheet. Every number in the text must trace to the facts, the 10-K or the risk summary; failures get one retry naming the problem, otherwise the draft is held back. | `research/narrative.py`, `research/grounding.py` |
+| **PDF** | HTML template with print CSS, rendered by Chrome. Vector charts, and a methodology page generated from `config.yaml` so it always matches the model used. | `research/render.py` |
+| **Backtest** | For each past quarter-end: SEC facts filtered to those filed by that day and re-extracted (restatements as of then), prices, two-year betas and the 10-year yield on the day. Then the unchanged engine. Rank ICs, tercile spreads, Newey-West t-stats, robustness checks. | `research/backtest.py` |
 
-### 2. Trading comps
-- EV/Revenue, EV/EBITDA, P/FCF, growth, gross and FCF margins, SBC as % of revenue, and Rule of 40.
-- Fiscal years end anywhere from January to December, so every flow metric is **calendarized** to CY2025.
-- Enterprise value bridges from market cap through debt, cash and short-term investments.
-- Multiples on negative earnings, or above 100x, are reported as NM (not meaningful) rather than as misleading numbers.
+Every assumption lives in [`config/config.yaml`](config/config.yaml), with a comment explaining each choice. Excel workbooks with the full models are in [`outputs/`](outputs/), and an interactive Streamlit dashboard re-runs all valuations as you move the assumptions (`dashboard/app.py`).
 
-### 3. DCF
-- **Two stages:** 5 explicit years, then 5 fade years in which growth glides to a 3% terminal rate and FCF margins converge to a mature level.
-  - A plain 5-year model forces every company to 3% growth by year 5 and gives them all the same ~3-4x terminal multiple. That erases the premium for growth; the fade stage fixes it.
-- **Discount rate:** WACC, with the cost of equity from CAPM using Blume-adjusted betas.
-- **Mechanics:** mid-year discounting, a Gordon growth terminal value, and a roll-forward to the valuation date.
-- **Stock-based comp is treated as a real expense.** It is employee pay delivered in shares. Adding it back flatters every company in this sector.
-- **Outputs:** a WACC × terminal growth sensitivity grid per company, and a reverse DCF that solves for the growth the market price implies.
-
-### 4. Ranking
-- **Comps signal.** Raw multiples mislead, because faster growers deserve higher ones. Instead, ln(EV/Revenue) is regressed on revenue growth across the peer group.
-  - Growth explains 53% of the variation in multiples, against 29% for Rule of 40 and 1% for FCF margin, so growth is the regressor.
-  - Each company's fair multiple comes from a line fitted on the *other* 17 (leave-one-out), so an outlier can't set its own benchmark.
-
-![Comps regression](docs/images/comps_regression.png)
-
-- **Combined score:** DCF upside and comps upside are converted to percentile ranks and averaged 50/50 into a 0–100 score. The ranking flags every company where the two signals disagree.
-
-### 5. Dashboard
-- Built in Streamlit; it re-runs all 18 valuations whenever you move a slider: rates, terminal growth, mature margins, fade length, SBC treatment, ranking weights.
-- You can set your own growth, margin and beta for any single company. The re-ranking includes your view.
-- It uses the same model code as the command-line scripts, so its results always match the Excel outputs.
-
-![Company page](docs/images/company.png)
-
-### 6. AI risk layer (optional)
-- Claude Opus 5.5 reads Item 1A of each company's latest 10-K, 374,000 words in total.
-- It returns schema-validated JSON: a summary, the five most material risks (marked company-specific or boilerplate), and an AI disruption rating with the mechanism behind it.
-- **Every quote is checked word-for-word against the filing.** In the full run, 107 of 108 quotes matched. The one paraphrase was flagged, not hidden.
-- Results are cached per filing. A full run cost $3.85.
-
-![Risk panel](docs/images/company_risk.png)
-
----
-
-## Outputs
-
-The `outputs/` folder holds a snapshot of every workbook, so you can open the models without running anything:
-
-| Workbook | Contents |
-|---|---|
-| [`comps_CY2025.xlsx`](outputs/comps_CY2025.xlsx) | Comps table, summary stats by profile, EV bridge, calendarization, stock splits, overrides, methodology |
-| [`dcf_models.xlsx`](outputs/dcf_models.xlsx) | Summary plus one sheet per company: 10-year projection, valuation bridge, colour-coded sensitivity grid |
-| [`ranking.xlsx`](outputs/ranking.xlsx) | Final ranking, comps regression with chart, methodology |
-| [`risk_summaries.xlsx`](outputs/risk_summaries.xlsx) | AI risk vs valuation verdict, top 5 risks per company with verified quotes, run log |
+## Lessons worth knowing (found by tests and by looking at the output)
+- **"Filed" dates lie for backtests.** The standardized data keeps the date of the *latest* filing that reported a number, often a year after it was first published. The backtest rebuilds from every filed version instead.
+- **A strict checker is only as good as its false positives.** The first full narrative run retried all 18 drafts. The cause was the checker reading "52-week" and "Rule of 40" as unsupported numbers. Logging *why* drafts were retried exposed it.
+- **Silent rendering failures.** HTML-escaping the stylesheet dropped every font rule without an error, and integer market caps showed as "n/a". Both were found only by rendering and looking at the pages, and both now have tests.
 
 ## Run it yourself
 
-Requires Python 3.12+.
+Requires Python 3.12+ and Google Chrome (for the PDFs).
 
 ```bash
 git clone https://github.com/ranabrahami/saas-valuation-engine.git
 cd saas-valuation-engine
 python3.12 -m venv .venv && source .venv/bin/activate
-pip install -e ".[dashboard]"            # add ,ai for the risk layer, ,dev for tests
-cp .env.example .env                     # the SEC asks for a name and email in the User-Agent
+pip install -e ".[report,ai,dev]"         # add ,dashboard for the Streamlit app
+cp .env.example .env                      # SEC User-Agent (name + email); ANTHROPIC_API_KEY for the AI steps
 ```
 
 ```bash
-python -m saas_valuation.data.pipeline    # fetch and clean data (cached; --refresh to re-download)
-python -m saas_valuation.models.comps     # -> outputs/comps_CY2025.xlsx
-python -m saas_valuation.models.dcf       # -> outputs/dcf_models.xlsx
-python -m saas_valuation.models.ranking   # -> outputs/ranking.xlsx
-streamlit run dashboard/app.py            # dashboard at http://localhost:8501
-
-# Optional, needs ANTHROPIC_API_KEY in .env (about $4 for all 18):
-python -m saas_valuation.models.risk --estimate   # exact token count and cost, nothing billed
-python -m saas_valuation.models.risk              # asks before spending
+python -m saas_valuation.data.pipeline             # SEC + market data (cached)
+python -m saas_valuation.models.comps              # comps        -> outputs/comps_CY2025.xlsx
+python -m saas_valuation.models.dcf                # DCF          -> outputs/dcf_models.xlsx
+python -m saas_valuation.models.ranking            # ranking      -> outputs/ranking.xlsx
+python -m saas_valuation.models.target             # price targets, scenarios, ratings
+python -m saas_valuation.models.risk --estimate    # AI risk summaries: free token count first, then run without --estimate
+python -m saas_valuation.research.narrative --estimate   # report narratives: ~$0.20-0.25 per company
+python -m saas_valuation.research.render           # PDFs         -> outputs/reports/<TICKER>/
+python -m saas_valuation.research.backtest         # backtest     -> outputs/backtest/backtest_note.pdf
+pytest                                             # 81 tests; AI steps use a fake client, nothing billed
 ```
 
-To change any assumption, edit [`config/config.yaml`](config/config.yaml): the universe, WACC inputs, terminal growth, fade length, SBC treatment, ranking weights and verdict thresholds all live there. Run `pytest` for the 45 tests, which cover the data pipeline, models, AI layer (with a fake client, so nothing is billed) and the dashboard in a real browser.
+The paid steps (risk summaries and narratives) show an exact token count and ask before spending. Results are cached, so re-running costs nothing until the data or prompts change.
 
 ## Limitations
-
-- **18 companies is a small sample.** The comps regression (R² 0.53) is a useful benchmark, not a precise one.
-- **Annual data only.** Balance sheets are from the latest 10-K, not the latest 10-Q, so net cash can be up to a year old.
-- **The DCF is formula-driven.** Every company gets the same fade shape and terminal assumptions unless you override it in the dashboard. It is a screen, not a substitute for company-specific forecasts.
-- **Missing older data.** Some pre-2025 values aren't in the SEC's standardized dataset: Veeva capex FY2022–24, and D&A for a few companies. They are flagged in the data quality report. They don't affect the CY2025 valuation, which uses only the latest two fiscal years.
-- **AI ratings are an LLM's reading of company disclosures.** Every quote is verified, but the ratings themselves are judgments, and companies vary in how candidly they write risk factors.
+- **18 companies in one sector.** The peer regression (R² 0.49) is a benchmark, not a precise fair value. In the backtest, terciles are six stocks each.
+- **Backtest scope.** Three non-overlapping years, one regime, today's survivors. Returns are gross, equal-weighted, without costs. DCF parameters were set with today's knowledge; only the comps design was tested for sensitivity.
+- **Annual data only.** Balance sheets come from the latest 10-K, so net cash can be up to a year old.
+- **A formula-driven DCF.** It applies the same fade shape to every company and is harsh on fast growers, which is why CrowdStrike's target is flagged.
+- **AI-written text is checked, not infallible.** Every number is verified against the sources, but qualitative judgments in the narrative and risk ratings are the model's reading of the filings.
 
 ## Project structure
-
 ```
-config/config.yaml         Every assumption, with comments explaining each choice
+config/config.yaml          every assumption, with the reasoning
 src/saas_valuation/
-  data/                    SEC client, XBRL extraction, prices, splits, overrides, 10-K text
-  models/                  comps, dcf, ranking, risk (AI layer)
-  reports/                 Excel workbook builders
-dashboard/app.py           Streamlit dashboard
-scripts/screenshots.py     Regenerates the images in this README
-tests/                     pytest suite
-outputs/                   Excel snapshot
+  data/                     SEC client, XBRL extraction, prices, splits, overrides, 10-K sections
+  models/                   comps, DCF, ranking, price targets, AI risk summaries
+  reports/                  Excel workbook builders
+  research/                 report data, charts, narrative + number checker, PDF rendering, backtest
+    templates/              report and backtest-note HTML/CSS
+dashboard/app.py            Streamlit dashboard
+docs/samples/               sample report PDFs and the backtest note
+tests/                      81 tests
 ```
 
 ## Disclaimer
-
-Educational project. Not investment advice. Data from public SEC filings and Yahoo Finance; check against the filings before relying on any figure.
+Educational portfolio project. Not investment research from a regulated firm and not investment advice; nothing here is a recommendation to buy, sell or hold any security. Data from SEC EDGAR and Yahoo Finance; verify against the filings before relying on any figure.
