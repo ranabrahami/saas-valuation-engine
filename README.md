@@ -41,6 +41,7 @@ Each quarter since March 2023, the 18 companies were ranked by the engine's scor
 - **The value is in the growth adjustment.** Plain cheapness is 80% rank-correlated with the engine's score but earns half the IC. The signal works as "cheap *for its growth*", not "cheap".
 - **It survives attempts to break it.** Dropping any one company leaves the IC between 0.15 and 0.25. A permutation test gives p ≈ 0.005, which overstates certainty because overlapping windows aren't independent. The comps design rejected in 2026 (Rule of 40) does just as well (IC 0.24), so the result isn't an artifact of choosing the design after seeing the data.
 - **But treat it as encouraging, not proven.** There are only three non-overlapping years (ICs −0.15, +0.51, +0.27), one regime (2023–26) and today's survivors (the companies were chosen in 2026).
+- **It isn't a disguised factor bet.** In my [quant-research](https://github.com/ranabrahami/quant-research) factor study, a long-short portfolio built on the signal and held for 12 months keeps a positive alpha after the Fama-French five factors and momentum (+17.5% a year, t 1.6, not yet significant). Its only clear tilt is toward the smaller companies in the group. Most of the payoff arrives 7–12 months after the signal, so rebalancing every quarter misses it.
 
 <p>
 <img src="docs/images/backtest_page1.png" width="49%" alt="Backtest note page 1">
