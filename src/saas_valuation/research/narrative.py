@@ -82,6 +82,7 @@ make it outperform. Use the risk summary where relevant.
 def fact_sheet(c: CompanyReport) -> list[tuple[str, float, str, str]]:
     """[(label, value, kind, shown)], kind in money/pct/multiple/plain."""
     t, d, row, f = c.target, c.dcf, c.comps_row, c.fiscal
+    cy = f"calendar {c.calendar_year}"          # say which year, not "current year"
     rows: list[tuple[str, float, str]] = []
 
     def add(label, value, kind):
@@ -110,16 +111,16 @@ def fact_sheet(c: CompanyReport) -> list[tuple[str, float, str, str]]:
     add("52-week high", hi, "money")
     add("Market capitalization", row["market_cap"], "money")
     add("Enterprise value", row["enterprise_value"], "money")
-    add("EV / revenue (CY)", row["ev_revenue"], "multiple")
-    add("EV / EBITDA (CY)", row["ev_ebitda"], "multiple")
-    add("P / FCF (CY)", row["p_fcf"], "multiple")
-    add("Revenue growth (CY)", row["revenue_growth"], "pct")
-    add("Rule of 40 (CY)", row["rule_of_40"], "pct")
-    add("Stock-based pay as % of revenue (CY)", row["sbc_pct_revenue"], "pct")
+    add(f"EV / revenue ({cy})", row["ev_revenue"], "multiple")
+    add(f"EV / EBITDA ({cy})", row["ev_ebitda"], "multiple")
+    add(f"P / FCF ({cy})", row["p_fcf"], "multiple")
+    add(f"Revenue growth ({cy})", row["revenue_growth"], "pct")
+    add(f"Rule of 40 ({cy})", row["rule_of_40"], "pct")
+    add(f"Stock-based pay as % of revenue ({cy})", row["sbc_pct_revenue"], "pct")
     peers = c.peers.drop(index=c.ticker, errors="ignore")
-    add("Peer median EV / revenue", peers["ev_revenue"].median(), "multiple")
-    add("Peer median revenue growth", peers["revenue_growth"].median(), "pct")
-    add("Peer median FCF margin", peers["fcf_margin"].median(), "pct")
+    add(f"Peer median EV / revenue ({cy})", peers["ev_revenue"].median(), "multiple")
+    add(f"Peer median revenue growth ({cy})", peers["revenue_growth"].median(), "pct")
+    add(f"Peer median FCF margin ({cy})", peers["fcf_margin"].median(), "pct")
     add("Peer regression R² (EV/revenue on growth)", c.regression.get("r_squared"), "pct")
     add("Universe median expected return (rating reference)", c.reference_return, "pct")
     for year, r in f.iterrows():
@@ -140,7 +141,9 @@ def show(v: float, kind: str) -> str:
             return f"${v / 1e9:,.1f}B"
         if abs(v) >= 1e6:
             return f"${v / 1e6:,.0f}M"
-        return f"${v:,.2f}" if abs(v) < 1000 else f"${v:,.0f}"
+        if float(v).is_integer() or abs(v) >= 1000:
+            return f"${v:,.0f}"              # price targets are whole dollars: "$388", not "$388.00"
+        return f"${v:,.2f}"
     if kind == "pct":
         return f"{v * 100:.1f}%"
     if kind == "multiple":
@@ -230,6 +233,7 @@ def write(client, c: CompanyReport, business: str, cfg: dict) -> dict:
         if verdict["ok"]:
             return {**meta, "status": "ok", **result}
         if attempt == 0:
+            meta["first_attempt_problems"] = verdict["problems"]
             turn = [b.model_dump() if hasattr(b, "model_dump") else b for b in message.content]
             request["messages"] = request["messages"] + [
                 {"role": "assistant", "content": turn},

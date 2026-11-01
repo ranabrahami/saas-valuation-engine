@@ -106,3 +106,18 @@ def test_numbers_quoted_from_the_10k_are_allowed(company):
     from saas_valuation.research.narrative import check
     d = draft(company, body="It serves over 4,000 enterprise customers.")
     assert check(d, company, "We serve over 4,000 enterprise customers worldwide.")["ok"]
+
+
+def test_fact_labels_name_the_year_and_targets_are_whole_dollars(company):
+    from saas_valuation.research.narrative import show, tagged
+    labels = [label for label, *_ in tagged(company).values()]
+    assert not any("(CY)" in lb for lb in labels)
+    assert any(f"calendar {company.calendar_year}" in lb for lb in labels)
+    assert show(388.0, "money") == "$388" and show(250.23, "money") == "$250.23"
+
+
+def test_first_attempt_problems_are_logged(company):
+    from saas_valuation.research.narrative import write
+    bad = draft(company, body="Revenue will reach $99B.")
+    res = write(fake(bad, draft(company)), company, "", CFG)
+    assert any("$99B" in p for p in res["first_attempt_problems"])

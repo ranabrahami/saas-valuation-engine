@@ -300,8 +300,8 @@ research:
   model: claude-opus-5-5
   effort: medium
   max_tokens: 16000
-  # Bump when the prompt changes, so cached narratives from the old prompt are redone.
-  prompt_version: 1
+  # Bump when the prompt or the fact sheet changes, so cached narratives are redone.
+  prompt_version: 2
   # Item 1 (Business) of the 10-K is trimmed to this many words to keep cost down.
   business_max_words: 6000
   # USD per million tokens, for the estimate and the run log. Check current pricing.

@@ -41,6 +41,7 @@ class CompanyReport:
     valuation_date: date | None = None
     dcf_cfg: dict = field(default_factory=dict)
     reference_return: float = float("nan")      # the universe median the rating is measured against
+    calendar_year: int | None = None             # the year the comps (CY) metrics describe
 
     @property
     def week52(self) -> tuple[float, float]:
@@ -76,7 +77,8 @@ class Universe:
             prices=price_history(ticker, cache, d["market_data_max_age_hours"]),
             risk=risk if risk and risk.get("status") == "ok" else None,
             peers=self.comps, regression=self.regression, valuation_date=self.valuation_date,
-            dcf_cfg=self.cfg["dcf"], reference_return=self.reference_return)
+            dcf_cfg=self.cfg["dcf"], reference_return=self.reference_return,
+            calendar_year=self.cfg["comps"]["calendar_year"])
 
 
 def fiscal_history(financials: pd.DataFrame, subtract_capitalized_software: bool) -> pd.DataFrame:
