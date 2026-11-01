@@ -31,3 +31,7 @@ dist/
 
 # Generated research reports (sample PDFs are committed in Stage 6)
 outputs/reports/
+
+# Backtest working files (the note PDF itself is committed)
+outputs/backtest/*
+!outputs/backtest/backtest_note.pdf

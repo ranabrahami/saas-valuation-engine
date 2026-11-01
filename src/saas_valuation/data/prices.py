@@ -78,22 +78,25 @@ def fetch_market_data(ticker: str, cache_dir: Path, max_age_hours: float,
 
 def price_history(ticker: str, cache_dir: Path, max_age_hours: float, period: str = "2y",
                   refresh: bool = False) -> pd.DataFrame:
-    """Daily closing prices (split-adjusted, not dividend-adjusted), cached as CSV.
+    """Daily prices, cached as CSV. Columns:
+      close      split-adjusted, not dividend-adjusted (what the market showed, on today's share basis)
+      adj_close  also dividend-adjusted, for total returns in the backtest
 
-    Used for the report's price chart and the 52-week range. yfinance's Close is
-    already restated for splits, so CrowdStrike's 2026 4-for-1 split doesn't
-    show up as a 75% drop.
+    yfinance restates history for splits, so CrowdStrike's 2026 4-for-1 split
+    doesn't show up as a 75% drop. Works for indices too (^TNX, SPY).
     """
     cache_dir.mkdir(parents=True, exist_ok=True)
-    cache_file = cache_dir / f"{ticker}_history.csv"
+    safe = ticker.replace("^", "_")
+    cache_file = cache_dir / (f"{safe}_history.csv" if period == "2y" else f"{safe}_history_{period}.csv")
     if not refresh and cache_file.exists():
         age_hours = (time.time() - cache_file.stat().st_mtime) / 3600
-        if age_hours <= max_age_hours:
-            return pd.read_csv(cache_file, index_col="date", parse_dates=["date"])
+        cached = pd.read_csv(cache_file, index_col="date", parse_dates=["date"])
+        if age_hours <= max_age_hours and "adj_close" in cached:
+            return cached
     hist = yf.Ticker(ticker).history(period=period, auto_adjust=False)
     if hist.empty:
         raise RuntimeError(f"yfinance returned no price history for {ticker}")
-    out = pd.DataFrame({"close": hist["Close"].to_numpy()},
+    out = pd.DataFrame({"close": hist["Close"].to_numpy(), "adj_close": hist["Adj Close"].to_numpy()},
                        index=pd.DatetimeIndex(hist.index.tz_localize(None).normalize(), name="date"))
     out.to_csv(cache_file)
     return out

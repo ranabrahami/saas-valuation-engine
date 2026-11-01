@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>Backtest note: does the engine's valuation signal predict returns?</title>
+<style>{{ css }}</style></head>
+<body>
+<div class="masthead">
+  <div class="house">SaaS Valuation Engine · Quantitative Research<small>Backtest note</small></div>
+  <div class="meta"><b>18 US software companies</b><br>{{ today }}</div>
+</div>
+
+<div class="kicker">Point-in-time backtest · {{ first }} to {{ last }}</div>
+<h1>Cheap for its growth has paid, but the evidence is three years deep</h1>
+<p class="summary">Ranking the {{ n_companies }} companies each quarter by the engine's valuation score, using only filings and
+prices public on the day, gave a mean 12-month rank information coefficient (IC) of <b>{{ "%.2f"|format(eng.mean_ic) }}</b>
+(Newey-West t {{ "%.1f"|format(eng.ic_t_nw) }}), positive on {{ "%.0f"|format(eng.ic_hit_rate * 100) }}% of
+{{ n_dates }} start dates. The cheapest third beat the most expensive third by {{ "%.0f"|format(eng.mean_tercile_spread * 100) }}
+points over the following year on average. The result survives the checks below, but rests on only three
+non-overlapping years in one market regime, and should be read as encouraging rather than proven.</p>
+
+<h2>Question and method</h2>
+<p><b>Question.</b> On past dates, did the companies the engine called cheap go on to beat the ones it called expensive?</p>
+<p><b>Point in time.</b> For each quarter-end from {{ first }}, every SEC fact filed after that day is removed and the
+engine's own extraction rebuilds the financials as they stood then, including restatements. Prices are that day's
+closes, betas are regressed on SPY over the prior two years, and the risk-free rate is that day's 10-year Treasury
+yield. The engine's comps, DCF and ranking then run unchanged. Forward returns are dividend-adjusted.</p>
+<p><b>Measures.</b> The rank IC is the Spearman correlation between a signal and the next 12 months' returns across
+companies on one date. The tercile spread is the average return of the top third minus the bottom third. Start dates are
+quarterly but returns run 12 months, so windows overlap: t-statistics use Newey-West standard errors.</p>
+
+<figure>{{ svg.signals }}<figcaption>Grey: naive baselines. Source: this backtest; 12-month horizon, {{ first12 }} to {{ last12 }} start dates.</figcaption></figure>
+<div class="two">
+  <figure>{{ svg.ic }}<figcaption>Orange: mean across start dates.</figcaption></figure>
+  <figure>{{ svg.spread }}<figcaption>Red bars: the expensive third did better.</figcaption></figure>
+</div>
+
+<h2>Results</h2>
+<table class="data">
+  <tr><th>Signal</th><th>Mean IC 12m</th><th>t (NW)</th><th>IC &gt; 0</th><th>Tercile spread 12m</th><th>Mean IC 6m</th></tr>
+  {% for label in sum12.index %}
+  <tr><td>{{ label }}</td><td>{{ "%+.2f"|format(sum12.at[label, "mean_ic"]) }}</td><td>{{ "%.1f"|format(sum12.at[label, "ic_t_nw"]) }}</td>
+    <td>{{ "%.0f"|format(sum12.at[label, "ic_hit_rate"] * 100) }}%</td><td>{{ "%+.0f"|format(sum12.at[label, "mean_tercile_spread"] * 100) }} pts</td>
+    <td>{{ "%+.2f"|format(sum6.at[label, "mean_ic"]) if label in sum6.index else "n/a" }}</td></tr>
+  {% endfor %}
+</table>
+<p class="note">The signal is weaker at six months ({{ "%+.2f"|format(sum6.at[signals.score, "mean_ic"]) }}), consistent with valuation
+gaps closing slowly. Plain cheapness (low EV/revenue) is {{ "%.0f"|format(corr_cheap * 100) }}% rank-correlated with the engine
+score yet earns an IC of only {{ "%.2f"|format(cheap.mean_ic) }}: the value is in adjusting price for growth, not in low
+multiples as such. Momentum carries no information here.</p>
+
+<h2>Robustness</h2>
+<ul class="watch">
+  <li><b>Independent years.</b> Using one start date per year removes the overlap: ICs of
+    {% for d, v in annual.items() %}{{ "%+.2f"|format(v) }} ({{ d[:4] }}){{ ", " if not loop.last }}{% endfor %}.
+    One of three years was negative.</li>
+  <li><b>No single company.</b> Dropping each company in turn leaves the mean IC between {{ "%.2f"|format(loo_min) }}
+    (without {{ loo_low }}) and {{ "%.2f"|format(loo_max) }}.</li>
+  <li><b>Chance.</b> Shuffling the signal across companies on each date 5,000 times, {{ "%.1f"|format(perm_p * 100) }}% of
+    shuffles matched the observed mean IC (95th percentile of the null: {{ "%.2f"|format(null95) }}). This null still treats
+    overlapping windows as more independent than they are, so the true p-value is higher.</li>
+  <li><b>Design chosen after the fact.</b> The comps regression on revenue growth was selected in 2026 for its fit. Rerun with
+    the rejected alternative ({{ alt_reg }}), the score's IC is {{ "%.2f"|format(alt.mean_ic) }} (t {{ "%.1f"|format(alt.ic_t_nw) }}),
+    so the result does not depend on that choice.</li>
+</ul>
+
+<h2>Limitations</h2>
+<ul class="watch">
+  <li><b>Survivorship.</b> The 18 companies were chosen in 2026 as today's established SaaS names. Companies that failed,
+    were acquired or shrank out of relevance in 2023-25 are missing, which can flatter any signal.</li>
+  <li><b>Small, correlated sample.</b> {{ n_companies }} companies in one sector move together, so the cross-section holds far
+    less independent information than its size suggests, and terciles are six stocks each.</li>
+  <li><b>One regime.</b> 2023-26 combined rising-then-stable rates and an AI-driven rotation within software. A signal that
+    rewards cheap-for-growth may behave differently in another cycle.</li>
+  <li><b>Other design choices.</b> DCF parameters (terminal growth, mature margin, fade length) were set with today's knowledge.
+    Only the comps choice was tested for sensitivity here.</li>
+  <li><b>No costs or capacity.</b> Returns are gross, equal-weighted and assume trading at the close on each date.</li>
+</ul>
+<div class="disclosures"><p>Educational project, not investment advice. Data: SEC EDGAR companyfacts (all filed versions,
+filtered by filing date) and Yahoo Finance prices. Reproduce with <code>python -m saas_valuation.research.backtest</code>.</p></div>
+</body>
+</html>
