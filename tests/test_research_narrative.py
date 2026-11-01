@@ -18,6 +18,9 @@ DATA = (project_path(CFG["data"]["processed_dir"]) / "comps.csv").exists()
     ("We see 25 points of upside versus the median.", True),                   # a difference of two facts
     ("Reaffirm three pillars; FY2025 revenue [F1] grew.", True),               # years and small counts
     ("Target of $400 [F9].", False),                                           # unknown tag and number
+    ("Near its 52-week high, with a Rule of 40 score below peers, per the 10-K.", True),   # names, not data
+    ("The 25-point gap is the opportunity.", True),                             # hyphenated unit
+    ("A 99-point gap.", False),
 ])
 def test_grounding(text, ok):
     facts = {"F1": (3.13e9, "money"), "F2": (0.1924, "pct"), "F3": (3.08, "multiple"),

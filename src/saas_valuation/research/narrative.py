@@ -319,13 +319,33 @@ def run(tickers: list[str] | None, estimate_only: bool, assume_yes: bool, refres
     print(f"Total spent: ${spent:.2f}")
 
 
+def recheck() -> None:
+    """Re-verify saved drafts with the current checker. Free: no API calls."""
+    cfg = load_config()
+    u = load_universe(cfg)
+    for path in sorted((project_path(cfg["data"]["processed_dir"]) / "research").glob("*.json")):
+        res = json.loads(path.read_text())
+        if res.get("status") not in ("ok", "needs_review"):
+            continue
+        c = u.company(res["ticker"])
+        verdict = check(res, c, business_for(cfg, c) or "")
+        new = "ok" if verdict["ok"] else "needs_review"
+        if new != res["status"]:
+            res.update(status=new, problems=verdict["problems"], rechecked_at=datetime.now().isoformat(timespec="seconds"))
+            path.write_text(json.dumps(res, indent=2))
+        print(f"{res['ticker']:5} {new}{'  ' + '; '.join(verdict['problems']) if verdict['problems'] else ''}")
+
+
 def main() -> None:
     p = argparse.ArgumentParser(description="Write equity research narratives with Claude.")
     p.add_argument("--tickers", help="comma-separated, e.g. ADBE,HUBS")
     p.add_argument("--estimate", action="store_true", help="count tokens and estimate cost; nothing billed")
     p.add_argument("--yes", action="store_true", help="don't ask before spending")
     p.add_argument("--refresh", action="store_true", help="rewrite even if a current narrative is cached")
+    p.add_argument("--recheck", action="store_true", help="re-verify saved drafts with the current checker (free)")
     a = p.parse_args()
+    if a.recheck:
+        return recheck()
     run(a.tickers.split(",") if a.tickers else None, a.estimate, a.yes, a.refresh)
 
 

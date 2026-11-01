@@ -14,9 +14,12 @@ from dataclasses import dataclass, field
 
 NUMBER = re.compile(
     r"(?P<neg>[-−])?(?P<cur>[$])?(?P<num>\d{1,3}(?:,\d{3})+|\d+)(?P<dec>\.\d+)?"
-    r"\s?(?P<unit>%|x\b|times\b|bn\b|B\b|M\b|K\b|billion\b|million\b|percentage points?\b|points?\b|pts?\b|bps\b)?",
+    r"(?:\s?-?\s?)(?P<unit>%|x\b|times\b|bn\b|B\b|M\b|K\b|billion\b|million\b|percentage[- ]points?\b|points?\b|pts?\b"
+    r"|bps\b|basis[- ]points?\b)?",
     re.IGNORECASE)
 TAG = re.compile(r"\[(F\d+)\]")
+# Names that contain digits but aren't data: "52-week high", "Rule of 40", "10-K", "Item 1A".
+NAMED = re.compile(r"\b52[- ]week\b|\brule of 40\b|\b10-[KQ]\b|\bitem \d+[A-C]?\b|\bS&P 500\b", re.IGNORECASE)
 YEAR = re.compile(r"^(?:FY|CY)?(19|20)\d\d[E]?$")
 SCALE = {"b": 1e9, "bn": 1e9, "billion": 1e9, "m": 1e6, "million": 1e6, "k": 1e3}
 
@@ -46,7 +49,7 @@ def parse(text: str) -> list[Num]:
         unit = (m.group("unit") or "").lower()
         if unit == "%" or unit.startswith("percentage") or unit in ("pt", "pts", "point", "points"):
             kind, scale = "pct", 0.01
-        elif unit == "bps":
+        elif unit == "bps" or unit.startswith("basis"):
             kind, scale = "pct", 0.0001
         elif unit in ("x", "times"):
             kind, scale = "multiple", 1.0
@@ -72,7 +75,7 @@ def check(text: str, facts: dict[str, tuple[float, str]], sources: list[str]) ->
     pct = [v for k, v in allowed if k == "pct"]
     allowed += [("pct", abs(a - b)) for i, a in enumerate(pct) for b in pct[i + 1:]]
     unverified = []
-    clean = TAG.sub("", text)
+    clean = NAMED.sub(" ", TAG.sub("", text))
     for n in parse(clean):
         token = n.text.strip()
         if n.kind == "plain" and (YEAR.match(token) or (n.shown.is_integer() and 0 <= n.shown <= 12)):
