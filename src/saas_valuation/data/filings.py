@@ -112,3 +112,41 @@ def fetch_risk_factors(client: SecClient, ticker: str, cik: int, cache_dir: Path
            f"{filing['accession'].replace('-', '')}/{filing['document']}")
     return {"ticker": ticker, **filing, "url": url, "text": section, "words": words,
             "status": status, "detail": detail}
+
+
+# Item 1 (Business): from its heading to the Item 1A heading. Line-anchored like
+# Item 1A, so table-of-contents lines and in-text cross-references are skipped.
+ITEM1_START = re.compile(rf"^\s*item\s*1{_SEP}business\b", re.IGNORECASE | re.MULTILINE)
+ITEM1_END = re.compile(rf"^\s*item\s*1a{_SEP}risk\s+factors", re.IGNORECASE | re.MULTILINE)
+
+
+def extract_item_1(text: str) -> str | None:
+    """The longest span from an 'Item 1. Business' heading to the next 'Item 1A' heading."""
+    best = None
+    for start in ITEM1_START.finditer(text):
+        end = ITEM1_END.search(text, start.end())
+        if end is None:
+            continue
+        section = text[start.start():end.start()].strip()
+        if best is None or len(section) > len(best):
+            best = section
+    return best
+
+
+def business_section(cache_dir: Path, ticker: str, accession: str, max_words: int | None = None) -> str | None:
+    """Item 1 from an already-downloaded 10-K (cached by the risk layer), trimmed to max_words."""
+    stem = f"{ticker}_{accession}"
+    text_file = cache_dir / f"{stem}_item1.txt"
+    if text_file.exists():
+        section = text_file.read_text()
+    else:
+        html_file = cache_dir / f"{stem}.htm"
+        if not html_file.exists():
+            return None
+        section = extract_item_1(html_to_text(html_file.read_text(errors="ignore"))) or ""
+        if section:
+            text_file.write_text(section)
+    if not section:
+        return None
+    words = section.split()
+    return section if max_words is None or len(words) <= max_words else " ".join(words[:max_words]) + " [...]"

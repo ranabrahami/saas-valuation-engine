@@ -39,6 +39,8 @@ class CompanyReport:
     peers: pd.DataFrame = field(default_factory=pd.DataFrame)   # comps of the whole universe
     regression: dict = field(default_factory=dict)
     valuation_date: date | None = None
+    dcf_cfg: dict = field(default_factory=dict)
+    reference_return: float = float("nan")      # the universe median the rating is measured against
 
     @property
     def week52(self) -> tuple[float, float]:
@@ -58,6 +60,7 @@ class Universe:
     targets: pd.DataFrame
     regression: dict
     valuation_date: date
+    reference_return: float = float("nan")
 
     def company(self, ticker: str) -> CompanyReport:
         d = self.cfg["data"]
@@ -72,7 +75,8 @@ class Universe:
             projection=res["projection"], sensitivity=res["sensitivity"], target=self.targets.loc[ticker],
             prices=price_history(ticker, cache, d["market_data_max_age_hours"]),
             risk=risk if risk and risk.get("status") == "ok" else None,
-            peers=self.comps, regression=self.regression, valuation_date=self.valuation_date)
+            peers=self.comps, regression=self.regression, valuation_date=self.valuation_date,
+            dcf_cfg=self.cfg["dcf"], reference_return=self.reference_return)
 
 
 def fiscal_history(financials: pd.DataFrame, subtract_capitalized_software: bool) -> pd.DataFrame:
@@ -101,10 +105,12 @@ def load_universe(cfg: dict | None = None) -> Universe:
     financials = pd.read_csv(processed / "financials.csv")
     summary, results, valuation_date, _ = value_universe(comps, bridge, market, cfg)
     regression = build_ranking(comps, bridge, market, summary, cfg)["regression"]
-    targets = price_targets(comps, bridge, market, cfg)["targets"]
+    pt = price_targets(comps, bridge, market, cfg)
+    targets = pt["targets"]
     fiscal = fiscal_history(financials, cfg["comps"]["fcf_subtract_capitalized_software"])
     return Universe(cfg, comps, bridge, market, fiscal, summary, results, targets, regression,
-                    valuation_date if isinstance(valuation_date, date) else date.fromisoformat(str(valuation_date)))
+                    valuation_date if isinstance(valuation_date, date) else date.fromisoformat(str(valuation_date)),
+                    pt["reference_return"])
 
 
 def finite(x) -> bool:

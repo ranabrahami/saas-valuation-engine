@@ -292,3 +292,19 @@ report:
     basis: relative
     band: 0.15
     labels: {up: Overweight, mid: Neutral, down: Underweight}
+
+# -----------------------------------------------------------------------------
+# Research report narrative written by Claude (Report stage 3; needs ANTHROPIC_API_KEY)
+# -----------------------------------------------------------------------------
+research:
+  model: claude-opus-5-5
+  effort: medium
+  max_tokens: 16000
+  # Bump when the prompt changes, so cached narratives from the old prompt are redone.
+  prompt_version: 1
+  # Item 1 (Business) of the 10-K is trimmed to this many words to keep cost down.
+  business_max_words: 6000
+  # USD per million tokens, for the estimate and the run log. Check current pricing.
+  price_input_per_mtok: 4.0
+  price_output_per_mtok: 20.0
+  estimated_output_tokens: 7000
