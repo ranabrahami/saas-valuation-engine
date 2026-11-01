@@ -20,6 +20,7 @@ dependencies = [
 [project.optional-dependencies]
 dashboard = ["streamlit"]
 ai = ["anthropic"]
+report = ["matplotlib", "jinja2"]   # equity research reports: charts and HTML/PDF layout
 dev = ["pytest", "playwright"]  # playwright: browser test + README screenshots (uses local Chrome)
 
 [tool.setuptools.packages.find]

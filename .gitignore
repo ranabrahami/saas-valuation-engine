@@ -28,3 +28,6 @@ dist/
 .DS_Store
 .vscode/
 .idea/
+
+# Generated research reports (sample PDFs are committed in Stage 6)
+outputs/reports/

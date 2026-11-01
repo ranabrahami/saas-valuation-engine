@@ -6,9 +6,11 @@ price-based numerator (market cap -> EV) and a filing-based denominator.
 """
 
 import json
+import time
 from datetime import datetime, timedelta
 from pathlib import Path
 
+import pandas as pd
 import yfinance as yf
 
 # yfinance field -> our column name
@@ -72,3 +74,26 @@ def fetch_market_data(ticker: str, cache_dir: Path, max_age_hours: float,
                        "issue": "non_usd_quote", "detail": f"Quoted in {row['currency']}."})
     splits = [{**s, "source": "yfinance"} for s in snapshot["splits"]]
     return row, issues, splits
+
+
+def price_history(ticker: str, cache_dir: Path, max_age_hours: float, period: str = "2y",
+                  refresh: bool = False) -> pd.DataFrame:
+    """Daily closing prices (split-adjusted, not dividend-adjusted), cached as CSV.
+
+    Used for the report's price chart and the 52-week range. yfinance's Close is
+    already restated for splits, so CrowdStrike's 2026 4-for-1 split doesn't
+    show up as a 75% drop.
+    """
+    cache_dir.mkdir(parents=True, exist_ok=True)
+    cache_file = cache_dir / f"{ticker}_history.csv"
+    if not refresh and cache_file.exists():
+        age_hours = (time.time() - cache_file.stat().st_mtime) / 3600
+        if age_hours <= max_age_hours:
+            return pd.read_csv(cache_file, index_col="date", parse_dates=["date"])
+    hist = yf.Ticker(ticker).history(period=period, auto_adjust=False)
+    if hist.empty:
+        raise RuntimeError(f"yfinance returned no price history for {ticker}")
+    out = pd.DataFrame({"close": hist["Close"].to_numpy()},
+                       index=pd.DatetimeIndex(hist.index.tz_localize(None).normalize(), name="date"))
+    out.to_csv(cache_file)
+    return out
