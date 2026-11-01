@@ -255,3 +255,40 @@ ranking:
   # "undervalued" means cheaper than the rest of this universe.
   undervalued_above: 67
   overvalued_below: 33
+
+# -----------------------------------------------------------------------------
+# Equity research reports: price target and rating (Report stage 1)
+# -----------------------------------------------------------------------------
+report:
+  price_target:
+    # Fair value today = blend of the DCF value and the comps-implied price,
+    # the same two signals as the ranking. If the DCF is not meaningful
+    # (negative equity value), the comps price is used alone and the report says so.
+    dcf_weight: 0.5
+    comps_weight: 0.5
+    # The target is fair value rolled forward over the horizon at the cost of
+    # equity minus the dividend yield (none of these companies pays one):
+    # a share worth $100 today should be worth ~$100 x (1 + required return) in a year.
+    horizon_months: 12
+    dividend_yield: 0.0
+    round_to: 1.0                 # institutional targets are round numbers
+    # Targets implying a move beyond this are flagged in the report as model
+    # outliers to be read with caution (not capped: hiding a result is worse).
+    flag_return_beyond: 0.75
+
+  scenarios:
+    # Bull and bear cases. DCF side: shift starting growth and the mature FCF
+    # margin. Comps side: move the fair multiple by this many standard deviations
+    # of the peer regression's residuals, so the comps range is as wide as the
+    # peer relationship is noisy (data-driven, not a guess).
+    bull: {starting_growth_delta: 0.05, target_fcf_margin_delta: 0.05, comps_residual_sd: 1.0}
+    bear: {starting_growth_delta: -0.05, target_fcf_margin_delta: -0.05, comps_residual_sd: -1.0}
+
+  rating:
+    # "relative": rated against the coverage universe, like Morgan Stanley's
+    # Overweight / Equal-weight / Underweight. A stock is Overweight if its expected
+    # return beats the universe median by at least `band`, Underweight if it trails
+    # by at least `band`. "absolute": compare the expected return itself to `band`.
+    basis: relative
+    band: 0.15
+    labels: {up: Overweight, mid: Neutral, down: Underweight}
