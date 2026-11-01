@@ -43,7 +43,7 @@ BEAR, BULL = "#d9675f", "#5b9bd5"
 WIDE, HALF = (7.0, 2.7), (3.45, 2.55)
 
 plt.rcParams.update({
-    "font.family": ["Inter", "Helvetica Neue", "Arial", "DejaVu Sans"],
+    "font.family": ["Helvetica Neue", "Helvetica", "Arial", "DejaVu Sans"],   # same as the report page
     "font.size": 8, "axes.titlesize": 9, "axes.titleweight": "bold", "axes.titlelocation": "left",
     "axes.titlecolor": INK, "axes.labelcolor": INK2, "axes.edgecolor": GREY, "axes.linewidth": 0.6,
     "xtick.color": INK2, "ytick.color": INK2, "xtick.labelsize": 7.5, "ytick.labelsize": 7.5,
@@ -171,10 +171,10 @@ def football_field(c: CompanyReport):
     grid = c.sensitivity.to_numpy(dtype=float)
     grid = grid[np.isfinite(grid)]
     rows = [("52-week trading range", *c.week52),
-            ("DCF: WACC ±2pts, terminal growth 2-4%", grid.min() if grid.size else np.nan,
+            ("DCF (WACC ±2pt, g 2-4%)", grid.min() if grid.size else np.nan,
              grid.max() if grid.size else np.nan),
-            ("Comps: fair multiple ±1 s.d.", t["bear_comps"], t["bull_comps"]),
-            ("12-month target: bear to bull", t["bear_target"], t["bull_target"])]
+            ("Comps (multiple ±1 s.d.)", t["bear_comps"], t["bull_comps"]),
+            ("Target: bear to bull", t["bear_target"], t["bull_target"])]
     rows = [r for r in rows if finite(r[1]) and finite(r[2])]
     fig, ax = plt.subplots(figsize=(WIDE[0], 0.42 * len(rows) + 0.9))
     for i, (label, lo, hi) in enumerate(reversed(rows)):

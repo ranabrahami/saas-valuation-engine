@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>{{ c.name }} ({{ c.ticker }}): {{ n.headline }}</title>
+<style>{{ css }}</style>
+</head>
+<body>
+
+<!-- ====================== Page 1 ====================== -->
+<div class="masthead">
+  <div class="house">SaaS Valuation Engine · Equity Research<small>US Software · Initiation of coverage</small></div>
+  <div class="meta"><b>{{ c.name }} ({{ c.ticker }})</b><br>{{ date_long }}</div>
+</div>
+
+<div class="front">
+  <main>
+    <div class="kicker">{{ profile }} · Initiating at {{ t.rating }}</div>
+    <h1>{{ n.headline }}</h1>
+    <p class="summary">{{ n.summary }}</p>
+    <div class="thesis">
+      {% for p in n.thesis %}
+      <div class="pillar"><h3>{{ p.title }}</h3><p>{{ p.text }}</p></div>
+      {% endfor %}
+    </div>
+    <figure class="front-chart">{{ svg.price }}<figcaption>Source: {{ sources.price }}</figcaption></figure>
+  </main>
+  <aside class="sidebar">
+    <div class="rating {{ t.rating }}">
+      <div class="label">Rating</div><div class="value">{{ t.rating }}</div>
+    </div>
+    <table class="kv">
+      <caption>Price target</caption>
+      <tr class="strong"><td>12-month target</td><td>{{ fmt.money(t.price_target) }}</td></tr>
+      <tr><td>Share price ({{ price_date }})</td><td>{{ fmt.price(t.price) }}</td></tr>
+      <tr class="strong"><td>Expected return</td><td>{{ fmt.pct(t.expected_return, signed=True) }}</td></tr>
+      <tr><td>Bull case</td><td>{{ fmt.money(t.bull_target) }} ({{ fmt.pct(t.bull_return, signed=True) }})</td></tr>
+      <tr><td>Bear case</td><td>{{ fmt.money(t.bear_target) }} ({{ fmt.pct(t.bear_return, signed=True) }})</td></tr>
+    </table>
+    {% if t.outlier %}
+    <div class="flag"><b>Model outlier.</b> The target implies a move beyond ±{{ fmt.pct(outlier_band) }}.
+      Read with the valuation discussion, which explains the driver.</div>
+    {% endif %}
+    <table class="kv">
+      <caption>Key data</caption>
+      <tr><td>Market cap</td><td>{{ fmt.big(row.market_cap) }}</td></tr>
+      <tr><td>Enterprise value</td><td>{{ fmt.big(row.enterprise_value) }}</td></tr>
+      <tr><td>52-week range</td><td>{{ fmt.money(w52[0]) }}–{{ fmt.money(w52[1]) }}</td></tr>
+      <tr><td>EV / revenue (CY{{ cy }})</td><td>{{ fmt.mult(row.ev_revenue) }}</td></tr>
+      <tr><td>EV / EBITDA (CY{{ cy }})</td><td>{{ fmt.mult(row.ev_ebitda) }}</td></tr>
+      <tr><td>P / FCF (CY{{ cy }})</td><td>{{ fmt.mult(row.p_fcf) }}</td></tr>
+      <tr><td>Revenue growth (CY{{ cy }})</td><td>{{ fmt.pct(row.revenue_growth) }}</td></tr>
+      <tr><td>FCF margin (CY{{ cy }})</td><td>{{ fmt.pct(row.fcf_margin) }}</td></tr>
+      <tr><td>Growth price implies</td><td>{{ fmt.pct(dcf.market_implied_growth) }}</td></tr>
+    </table>
+    <table class="kv">
+      <caption>Valuation</caption>
+      <tr><td>DCF value</td><td>{{ fmt.money(t.dcf_value) }}</td></tr>
+      <tr><td>Comps value</td><td>{{ fmt.money(t.comps_value) }}</td></tr>
+      <tr><td>WACC</td><td>{{ fmt.pct(dcf.wacc, decimals=1) }}</td></tr>
+      <tr><td>Terminal growth</td><td>{{ fmt.pct(tg, decimals=1) }}</td></tr>
+    </table>
+  </aside>
+</div>
+
+<!-- ====================== Business and financials ====================== -->
+<div class="page-break"></div>
+<h2>Business overview</h2>
+<p>{{ n.business_overview }}</p>
+
+<h2>Financial summary</h2>
+<table class="data">
+  <tr><th>{{ "USD millions" }}</th>{% for col in fin.columns %}<th class="{{ 'est' if col.est }}">{{ col.label }}</th>{% endfor %}</tr>
+  {% for r in fin.rows %}
+  <tr class="{{ 'sub' if r.sub }}"><td>{{ r.label }}</td>{% for v in r.cells %}<td class="{{ 'est' if fin.columns[loop.index0].est }}">{{ v }}</td>{% endfor %}</tr>
+  {% endfor %}
+</table>
+<p class="note">Actuals are fiscal years from 10-K filings (SEC EDGAR). Estimates (E, shaded) are calendar years from the
+DCF projection; estimated free cash flow is after stock-based pay, which the model treats as a cost. n/a: not in the SEC's standardized data.</p>
+
+<div class="two">
+  <figure>{{ svg.revenue }}<figcaption>Source: {{ sources.revenue }}</figcaption></figure>
+  <figure>{{ svg.margins }}<figcaption>Source: {{ sources.margins }}</figcaption></figure>
+</div>
+<div class="two">
+  <figure>{{ svg.fcf }}<figcaption>Source: {{ sources.fcf }}</figcaption></figure>
+  <figure>{{ svg.comps }}<figcaption>Source: {{ sources.comps }}</figcaption></figure>
+</div>
+
+<!-- ====================== Valuation ====================== -->
+<h2>Valuation and price target</h2>
+<p>{{ n.valuation }}</p>
+<figure>{{ svg.football_field }}<figcaption>Source: {{ sources.football_field }}</figcaption></figure>
+<div class="avoid-break">
+<h3>DCF sensitivity: value per share by WACC (rows) and terminal growth (columns)</h3>
+<table class="data sens">
+  <tr><th>WACC</th>{% for g in sens.growths %}<th>{{ fmt.pct(g, decimals=1) }}</th>{% endfor %}</tr>
+  {% for row_ in sens.rows %}
+  <tr><td><b>{{ fmt.pct(row_.rate, decimals=1) }}</b></td>
+    {% for cell in row_.cells %}<td class="{{ cell.cls }}">{{ fmt.money(cell.value) }}</td>{% endfor %}</tr>
+  {% endfor %}
+</table>
+<p class="note">Bordered cell: base case. Blue: above today's price of {{ fmt.price(t.price) }}; red: below.</p>
+</div>
+
+<!-- ====================== Risks ====================== -->
+<h2>Risks to our rating</h2>
+<ul class="risks">
+  {% for r in n.risks %}<li><b>{{ r.title }}.</b> {{ r.text }}</li>{% endfor %}
+</ul>
+<h2>What would change our view</h2>
+<ul class="watch">{% for w in n.what_would_change %}<li>{{ w }}</li>{% endfor %}</ul>
+
+<!-- ====================== Methodology and disclosures ====================== -->
+<div class="page-break"></div>
+<h2>Methodology</h2>
+<div class="method">
+  <p><b>Price target.</b> Fair value today blends a discounted cash flow value ({{ fmt.pct(m.dcf_weight) }}) with a
+  comparable-company value ({{ fmt.pct(m.comps_weight) }}); where the DCF is not meaningful, the comps value is used
+  alone. The 12-month target rolls fair value forward over {{ m.horizon }} months at the cost of equity less a dividend
+  yield of {{ fmt.pct(m.dividend_yield) }}, rounded to the nearest dollar.</p>
+  <p><b>DCF.</b> A two-stage model: {{ m.explicit }} explicit years followed by {{ m.fade }} fade years in which revenue
+  growth glides to a terminal rate of {{ fmt.pct(tg, decimals=1) }} and the free-cash-flow margin moves to a mature
+  level of at least {{ fmt.pct(m.target_margin) }}. Stock-based compensation is deducted as a real cost. The discount
+  rate is the WACC, with the cost of equity from CAPM (risk-free rate {{ fmt.pct(m.rf, decimals=1) }}, equity risk premium
+  {{ fmt.pct(m.erp, decimals=1) }}, Blume-adjusted beta).</p>
+  <p><b>Comparables.</b> ln(EV/revenue) is regressed on calendar-year revenue growth across the {{ m.n }}-company
+  coverage universe (R² {{ "%.2f"|format(m.r2) }}). Each company's fair multiple comes from a line fitted on the other
+  companies (leave-one-out), applied to its revenue and bridged to equity value per share.</p>
+  <p><b>Scenarios.</b> Bull and bear cases shift the DCF's starting growth by {{ m.growth_shift }} and its mature margin by
+  {{ m.margin_shift }}, and move the fair multiple by one standard deviation of the regression residuals
+  ({{ "%.2f"|format(m.resid_sd) }} in log terms, a factor of {{ "%.2f"|format(m.resid_factor) }}).</p>
+  <p><b>Rating.</b> {{ m.rating_text }} Targets implying a move beyond ±{{ fmt.pct(outlier_band) }} are flagged as
+  model outliers rather than capped.</p>
+  <p><b>Narrative.</b> Written by {{ m.model }} from the model's figures, the company's latest 10-K (Item 1 and
+  Item 1A) and a risk summary. Every number in the text was checked automatically against those sources; the rating and
+  target were set by the model and given to the writer as facts.</p>
+</div>
+<div class="disclosures">
+  <p><b>Disclosures.</b> This report was generated automatically by the SaaS Valuation Engine, an educational
+  portfolio project. It is not investment research from a regulated firm and not investment advice; nothing in it is a
+  recommendation to buy, sell or hold any security. Data: SEC EDGAR filings and Yahoo Finance market data as of
+  {{ price_date }}. Figures may contain errors; verify against the company's filings before relying on them.</p>
+</div>
+</body>
+</html>

@@ -116,4 +116,6 @@ def load_universe(cfg: dict | None = None) -> Universe:
 
 
 def finite(x) -> bool:
-    return x is not None and isinstance(x, (int, float, np.floating)) and np.isfinite(x)
+    """A real, finite number (ints included: market caps arrive as integers)."""
+    import numbers
+    return isinstance(x, numbers.Real) and not isinstance(x, bool) and bool(np.isfinite(x))

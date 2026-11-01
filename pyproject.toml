@@ -25,3 +25,6 @@ dev = ["pytest", "playwright"]  # playwright: browser test + README screenshots 
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.setuptools.package-data]
+"saas_valuation.research" = ["templates/*"]   # report HTML template and stylesheet
